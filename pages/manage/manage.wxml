@@ -86,9 +86,9 @@
           <view class="member-main">
             <view class="member-name-row">
               <text class="member-name">{{item.displayName}}</text>
-              <text class="member-role-tag {{item.role === 'owner' ? 'member-role-owner' : 'member-role-manager'}}">
-                {{item.roleLabel}}
-              </text>
+              <view class="member-role-tag {{item.role === 'owner' ? 'member-role-owner' : 'member-role-manager'}}">
+                <text class="member-role-text">{{item.roleLabel}}</text>
+              </view>
             </view>
             <text class="member-desc">{{item.hintText}}</text>
           </view>
@@ -105,6 +105,9 @@
         </view>
       </view>
 
+      <button wx:if="{{canLeaveBaby}}" class="secondary-btn member-leave-btn" bindtap="handleLeaveBaby">
+        退出当前协作
+      </button>
       <button class="secondary-btn" bindtap="handleCollapseCollaboration">收起协作</button>
     </block>
   </view>

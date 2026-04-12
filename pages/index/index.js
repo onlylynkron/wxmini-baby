@@ -8,6 +8,7 @@ const RECORD_TYPES = [
   { id: "temperature", label: "体温" },
   { id: "growth", label: "成长" },
 ];
+const RECORD_FILTER_OPTIONS = [{ id: "all", label: "全部" }, ...RECORD_TYPES];
 
 const FEEDING_METHODS = ["配方奶", "母乳", "混合喂养", "其他"];
 const FEEDING_AMOUNT_OPTIONS = [
@@ -27,6 +28,10 @@ const TEMPERATURE_METHODS = ["腋温", "耳温", "额温"];
 const PREFERRED_FEEDING_METHOD_KEY = "baby-care-preferred-feeding-method";
 const PROFILE_COLLAPSE_STORAGE_KEY = "baby-care-profile-collapse-state";
 const COLLABORATION_COLLAPSE_STORAGE_KEY = "baby-care-collaboration-collapse-state";
+const RECORD_FILTER_COLLAPSE_STORAGE_KEY = "baby-care-record-filter-collapse-state";
+const LATEST_STATUS_FRESH_THRESHOLD = 30 * 60 * 1000;
+const LATEST_STATUS_WARNING_THRESHOLD = 2 * 60 * 60 * 1000;
+const LATEST_STATUS_ALERT_THRESHOLD = 4 * 60 * 60 * 1000;
 
 const POOP_COLORS = [
   { id: "golden", label: "金黄", image: "/assets/poop-colors/golden.png" },
@@ -86,6 +91,11 @@ function readCollaborationCollapseState() {
   return state && typeof state === "object" ? state : {};
 }
 
+function readRecordFilterCollapseState() {
+  const state = wx.getStorageSync(RECORD_FILTER_COLLAPSE_STORAGE_KEY);
+  return state && typeof state === "object" ? state : {};
+}
+
 function isProfileCollapsed(babyId) {
   if (!babyId) {
     return false;
@@ -100,6 +110,19 @@ function isCollaborationCollapsed(babyId) {
   }
 
   return Boolean(readCollaborationCollapseState()[babyId]);
+}
+
+function isRecordFilterCollapsed(babyId) {
+  if (!babyId) {
+    return true;
+  }
+
+  const state = readRecordFilterCollapseState();
+  if (Object.prototype.hasOwnProperty.call(state, babyId)) {
+    return Boolean(state[babyId]);
+  }
+
+  return true;
 }
 
 function saveProfileCollapseState(babyId, collapsed) {
@@ -130,6 +153,16 @@ function saveCollaborationCollapseState(babyId, collapsed) {
   }
 
   wx.setStorageSync(COLLABORATION_COLLAPSE_STORAGE_KEY, state);
+}
+
+function saveRecordFilterCollapseState(babyId, collapsed) {
+  if (!babyId) {
+    return;
+  }
+
+  const state = readRecordFilterCollapseState();
+  state[babyId] = Boolean(collapsed);
+  wx.setStorageSync(RECORD_FILTER_COLLAPSE_STORAGE_KEY, state);
 }
 
 function getPreferredFeedingMethod() {
@@ -205,6 +238,31 @@ function createDefaultStorageMeta() {
     mode: "local",
     collaborationEnabled: false,
   };
+}
+
+function createLatestStatusCards() {
+  return [
+    {
+      label: "最后喝奶",
+      timeText: "暂无记录",
+      detailText: "",
+      relativeText: "还没有喝奶记录",
+      cardClass: "latest-status-feeding",
+      toneClass: "latest-status-tone-empty",
+      badgeText: "",
+      badgeClass: "",
+    },
+    {
+      label: "最后换尿布",
+      timeText: "暂无记录",
+      detailText: "",
+      relativeText: "还没有尿布记录",
+      cardClass: "latest-status-diaper",
+      toneClass: "latest-status-tone-empty",
+      badgeText: "",
+      badgeClass: "",
+    },
+  ];
 }
 
 function getAgeInfo(birthDate) {
@@ -332,6 +390,255 @@ function buildCollaborationSummaryText(storageMeta, members, canManageMembers) {
   return `${members.length}位成员 · 可查看协作成员`;
 }
 
+function getRecordTimestampValue(record) {
+  const recordDateText = String((record && record.date) || "").trim();
+  const recordTimeText = String((record && record.time) || "").trim();
+
+  if (recordDateText && recordTimeText) {
+    const parsedValue = new Date(`${recordDateText}T${recordTimeText}:00`).getTime();
+    if (!Number.isNaN(parsedValue)) {
+      return parsedValue;
+    }
+  }
+
+  const timestamp = Number(record && record.recordAt);
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function formatElapsedDurationText(timestamp, options = {}) {
+  const { includePrefix = false, compact = false } = options;
+
+  if (!timestamp) {
+    return includePrefix ? "暂无记录" : "";
+  }
+
+  const rawDiff = Date.now() - timestamp;
+  if (rawDiff < -60000) {
+    return includePrefix ? "时间在未来" : "时间异常";
+  }
+
+  const diff = Math.max(0, rawDiff);
+  const totalMinutes = Math.floor(diff / 60000);
+
+  if (totalMinutes < 1) {
+    return includePrefix ? "距现在 刚刚" : "刚刚";
+  }
+
+  if (totalMinutes < 60) {
+    const text = compact ? `${totalMinutes}分钟` : `${totalMinutes}分钟`;
+    return includePrefix ? `距现在 ${text}` : text;
+  }
+
+  const totalHours = Math.floor(totalMinutes / 60);
+  const remainMinutes = totalMinutes % 60;
+
+  if (totalHours < 24) {
+    const text = remainMinutes
+      ? `${totalHours}小时${compact ? `${remainMinutes}分` : `${remainMinutes}分钟`}`
+      : `${totalHours}小时`;
+    return includePrefix ? `距现在 ${text}` : text;
+  }
+
+  const totalDays = Math.floor(totalHours / 24);
+  const remainHours = totalHours % 24;
+
+  if (totalDays < 30) {
+    const text = remainHours ? `${totalDays}天${remainHours}小时` : `${totalDays}天`;
+    return includePrefix ? `距现在 ${text}` : text;
+  }
+
+  const totalMonths = Math.floor(totalDays / 30);
+  const remainDays = totalDays % 30;
+  const text = remainDays ? `${totalMonths}个月${remainDays}天` : `${totalMonths}个月`;
+  return includePrefix ? `距现在 ${text}` : text;
+}
+
+function formatRelativeDuration(record) {
+  return formatElapsedDurationText(getRecordTimestampValue(record), {
+    includePrefix: true,
+  });
+}
+
+function isSameCalendarDay(left, right) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
+function formatLatestRecordTime(record) {
+  const now = new Date();
+  const todayText = formatDate(now);
+  const yesterdayText = formatDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+  const recordDateText = record.date || "";
+  const recordTimeText = record.time || "";
+
+  if (recordDateText === todayText) {
+    return `今天 ${recordTimeText}`;
+  }
+
+  if (recordDateText === yesterdayText) {
+    return `昨天 ${recordTimeText}`;
+  }
+
+  if (recordDateText && recordTimeText) {
+    return `${recordDateText} ${recordTimeText}`;
+  }
+
+  const recordDate = new Date(getRecordTimestampValue(record));
+  if (!Number.isNaN(recordDate.getTime())) {
+    if (isSameCalendarDay(recordDate, now)) {
+      return `今天 ${pad(recordDate.getHours())}:${pad(recordDate.getMinutes())}`;
+    }
+
+    if (isSameCalendarDay(recordDate, new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1))) {
+      return `昨天 ${pad(recordDate.getHours())}:${pad(recordDate.getMinutes())}`;
+    }
+
+    return `${formatDate(recordDate)} ${pad(recordDate.getHours())}:${pad(recordDate.getMinutes())}`;
+  }
+
+  return "暂无时间";
+}
+
+function buildDiaperDetailText(record) {
+  if (!record) {
+    return "";
+  }
+
+  const parts = [record.diaperType || "尿布记录"];
+  const poopColor = POOP_COLOR_MAP[record.poopColorId];
+
+  if (poopColor && (record.diaperType === "便便" || record.diaperType === "混合")) {
+    parts.push(poopColor.label);
+  }
+
+  return parts.join(" · ");
+}
+
+function getLatestStatusTone(record) {
+  if (!record) {
+    return "empty";
+  }
+
+  const timestamp = getRecordTimestampValue(record);
+  if (!timestamp) {
+    return "empty";
+  }
+
+  const rawDiff = Date.now() - timestamp;
+  if (rawDiff < -60000) {
+    return "future";
+  }
+
+  const diff = Math.max(0, rawDiff);
+
+  if (diff < LATEST_STATUS_FRESH_THRESHOLD) {
+    return "fresh";
+  }
+
+  if (diff < LATEST_STATUS_WARNING_THRESHOLD) {
+    return "recent";
+  }
+
+  if (diff < LATEST_STATUS_ALERT_THRESHOLD) {
+    return "warning";
+  }
+
+  return "alert";
+}
+
+function getLatestStatusBadgeByTimestamp(timestamp, tone) {
+  const durationText = formatElapsedDurationText(timestamp, {
+    compact: true,
+  });
+
+  switch (tone) {
+    case "fresh":
+      return {
+        text: durationText || "刚刚",
+        className: "latest-status-badge-fresh",
+      };
+    case "recent":
+      return {
+        text: durationText,
+        className: "latest-status-badge-recent",
+      };
+    case "warning":
+      return {
+        text: durationText,
+        className: "latest-status-badge-warning",
+      };
+    case "alert":
+      return {
+        text: durationText,
+        className: "latest-status-badge-alert",
+      };
+    case "future":
+      return {
+        text: "时间异常",
+        className: "latest-status-badge-future",
+      };
+    default:
+      return {
+        text: "",
+        className: "",
+      };
+  }
+}
+
+function buildLatestStatusCard(label, record, detailText, emptyText, cardClass) {
+  if (!record) {
+    return {
+      label,
+      timeText: "暂无记录",
+      detailText: "",
+      relativeText: emptyText,
+      cardClass,
+      toneClass: "latest-status-tone-empty",
+      badgeText: "",
+      badgeClass: "",
+    };
+  }
+
+  const tone = getLatestStatusTone(record);
+  const badge = getLatestStatusBadgeByTimestamp(getRecordTimestampValue(record), tone);
+
+  return {
+    label,
+    timeText: formatLatestRecordTime(record),
+    detailText,
+    relativeText: formatRelativeDuration(record),
+    cardClass,
+    toneClass: `latest-status-tone-${tone}`,
+    badgeText: badge.text,
+    badgeClass: badge.className,
+  };
+}
+
+function buildLatestStatusCards(records) {
+  const feedingRecord = records.find((record) => record.type === "feeding");
+  const diaperRecord = records.find((record) => record.type === "diaper");
+
+  return [
+    buildLatestStatusCard(
+      "最后喝奶",
+      feedingRecord,
+      feedingRecord ? `${feedingRecord.method} · ${formatMetric(feedingRecord.amount, " ml")}` : "",
+      "还没有喝奶记录",
+      "latest-status-feeding"
+    ),
+    buildLatestStatusCard(
+      "最后换尿布",
+      diaperRecord,
+      buildDiaperDetailText(diaperRecord),
+      "还没有尿布记录",
+      "latest-status-diaper"
+    ),
+  ];
+}
+
 function sanitizeInteger(value) {
   return String(value || "").replace(/[^\d]/g, "");
 }
@@ -422,16 +729,40 @@ function sortRecords(records) {
   });
 }
 
-function filterRecords(records, filterDate) {
-  if (!filterDate) {
-    return records;
-  }
+function filterRecords(records, filterDate, filterType) {
+  return records.filter((record) => {
+    if (filterDate && record.date !== filterDate) {
+      return false;
+    }
 
-  return records.filter((record) => record.date === filterDate);
+    if (filterType && filterType !== "all" && record.type !== filterType) {
+      return false;
+    }
+
+    return true;
+  });
 }
 
 function getRecordTypeMeta(type) {
   return RECORD_TYPES.find((item) => item.id === type) || RECORD_TYPES[0];
+}
+
+function getRecordFilterMeta(type) {
+  return RECORD_FILTER_OPTIONS.find((item) => item.id === type) || RECORD_FILTER_OPTIONS[0];
+}
+
+function buildActiveFilterParts(filterDate, filterType) {
+  const parts = [];
+
+  if (filterDate) {
+    parts.push(filterDate);
+  }
+
+  if (filterType && filterType !== "all") {
+    parts.push(`分类：${getRecordFilterMeta(filterType).label}`);
+  }
+
+  return parts;
 }
 
 function buildFormFromRecord(record) {
@@ -469,7 +800,7 @@ function buildFormFromRecord(record) {
 function buildRecordView(record) {
   const baseRecord = {
     ...record,
-    displayTime: `${record.date} ${record.time}`,
+    displayTime: formatLatestRecordTime(record),
   };
 
   switch (record.type) {
@@ -552,9 +883,19 @@ function buildRecordView(record) {
   }
 }
 
+function buildEditingSummary(record) {
+  if (!record) {
+    return "";
+  }
+
+  const typeMeta = getRecordTypeMeta(record.type);
+  return `${typeMeta.label} · ${formatLatestRecordTime(record)}`;
+}
+
 Page({
   data: {
     recordTypes: RECORD_TYPES,
+    recordFilterOptions: RECORD_FILTER_OPTIONS,
     feedingMethods: FEEDING_METHODS,
     amountOptions: FEEDING_AMOUNT_OPTIONS,
     diaperTypes: DIAPER_TYPES,
@@ -572,6 +913,7 @@ Page({
     members: [],
     memberList: [],
     heroStats: [],
+    latestStatusCards: createLatestStatusCards(),
     allRecords: [],
     records: [],
     todaySummary: createSummary(),
@@ -579,14 +921,18 @@ Page({
     filterStats: [],
     todayDate: formatDate(new Date()),
     filterDate: "",
+    filterType: "all",
     filterPickerValue: formatDate(new Date()),
     filterTip: "当前显示全部记录",
     filterModeText: "当前显示全部记录",
+    hasActiveFilter: false,
+    filterCollapsed: true,
     listNote: "0 条",
     emptyTitle: "还没有记录",
     emptyDesc: "先添加一条宝宝记录。",
     amountPickerIndex: getAmountPickerIndex(""),
     editingId: "",
+    editingSummaryText: "",
     ageShortText: "未设置",
     ageDetailText: "设置出生日期后会自动计算天数、周数和周岁。",
     memberSummaryText: "1位成员",
@@ -608,7 +954,16 @@ Page({
   },
 
   onShow() {
+    this.startLatestStatusTicker();
     this.syncDashboard();
+  },
+
+  onHide() {
+    this.stopLatestStatusTicker();
+  },
+
+  onUnload() {
+    this.stopLatestStatusTicker();
   },
 
   async syncDashboard() {
@@ -635,9 +990,24 @@ Page({
   resetForm() {
     this.setData({
       editingId: "",
+      editingSummaryText: "",
       form: createDefaultForm(),
       amountPickerIndex: getAmountPickerIndex(""),
     });
+  },
+
+  startLatestStatusTicker() {
+    this.stopLatestStatusTicker();
+    this.latestStatusTimer = setInterval(() => {
+      this.refreshLatestStatus(this.data.allRecords);
+    }, 60000);
+  },
+
+  stopLatestStatusTicker() {
+    if (this.latestStatusTimer) {
+      clearInterval(this.latestStatusTimer);
+      this.latestStatusTimer = null;
+    }
   },
 
   setProfileCollapsed(collapsed, babyId) {
@@ -653,6 +1023,14 @@ Page({
     saveCollaborationCollapseState(targetBabyId, collapsed);
     this.setData({
       collaborationCollapsed: collapsed,
+    });
+  },
+
+  setRecordFilterCollapsed(collapsed, babyId) {
+    const targetBabyId = babyId || this.data.babyProfile.id;
+    saveRecordFilterCollapseState(targetBabyId, collapsed);
+    this.setData({
+      filterCollapsed: collapsed,
     });
   },
 
@@ -676,6 +1054,7 @@ Page({
       },
       profileCollapsed: isProfileCollapsed(babyProfile.id),
       collaborationCollapsed: isCollaborationCollapsed(babyProfile.id),
+      filterCollapsed: isRecordFilterCollapsed(babyProfile.id),
       members,
       memberList,
       todaySummary,
@@ -691,6 +1070,7 @@ Page({
     });
 
     this.refreshView(allRecords);
+    this.refreshLatestStatus(allRecords);
   },
 
   async loadDashboard() {
@@ -732,6 +1112,7 @@ Page({
       const state = await babyService.joinBaby(inviteCode);
       this.setData({
         filterDate: "",
+        filterType: "all",
       });
       this.resetForm();
       this.applyState(state);
@@ -762,11 +1143,13 @@ Page({
 
   refreshView(allRecords) {
     const records = sortRecords(allRecords);
-    const filteredRecords = filterRecords(records, this.data.filterDate);
+    const filteredRecords = filterRecords(records, this.data.filterDate, this.data.filterType);
     const filteredSummary = getSummary(filteredRecords);
-    const listNote = this.data.filterDate
-      ? `筛选日期 ${this.data.filterDate} · ${filteredRecords.length} 条`
-      : `${filteredRecords.length} 条`;
+    const activeFilterParts = buildActiveFilterParts(this.data.filterDate, this.data.filterType);
+    const hasActiveFilter = activeFilterParts.length > 0;
+    const filterSummaryText = hasActiveFilter
+      ? `当前筛选：${activeFilterParts.join(" · ")}`
+      : "当前显示全部记录";
 
     this.setData({
       allRecords: records,
@@ -774,15 +1157,20 @@ Page({
       filteredSummary,
       filterStats: buildFilterStats(filteredSummary),
       filterPickerValue: this.data.filterDate || this.data.todayDate,
-      filterTip: this.data.filterDate
-        ? `当前筛选：${this.data.filterDate}`
-        : "当前显示全部记录",
-      filterModeText: this.data.filterDate ? "仅查看所选日期" : "当前显示全部记录",
-      listNote,
-      emptyTitle: this.data.filterDate ? "该日期暂无记录" : "还没有记录",
-      emptyDesc: this.data.filterDate
-        ? "换个日期试试，或先添加一条新记录。"
+      filterTip: filterSummaryText,
+      filterModeText: hasActiveFilter ? `已筛选 ${activeFilterParts.join(" · ")}` : "当前显示全部记录",
+      hasActiveFilter,
+      listNote: hasActiveFilter ? `${filteredRecords.length} 条结果` : `${filteredRecords.length} 条`,
+      emptyTitle: hasActiveFilter ? "当前筛选下暂无记录" : "还没有记录",
+      emptyDesc: hasActiveFilter
+        ? "换个日期或分类试试，或先添加一条新记录。"
         : "先添加一条宝宝记录。",
+    });
+  },
+
+  refreshLatestStatus(allRecords) {
+    this.setData({
+      latestStatusCards: buildLatestStatusCards(allRecords || []),
     });
   },
 
@@ -812,6 +1200,10 @@ Page({
 
   handleCollapseCollaboration() {
     this.setCollaborationCollapsed(true);
+  },
+
+  handleToggleRecordFilter() {
+    this.setRecordFilterCollapsed(!this.data.filterCollapsed);
   },
 
   async handleSaveProfile() {
@@ -1025,10 +1417,24 @@ Page({
     );
   },
 
+  handleFilterTypeChange(event) {
+    const { type } = event.currentTarget.dataset;
+
+    this.setData(
+      {
+        filterType: type,
+      },
+      () => {
+        this.refreshView(this.data.allRecords);
+      }
+    );
+  },
+
   handleResetFilter() {
     this.setData(
       {
         filterDate: "",
+        filterType: "all",
       },
       () => {
         this.refreshView(this.data.allRecords);
@@ -1050,19 +1456,23 @@ Page({
 
     this.setData({
       editingId: id,
+      editingSummaryText: buildEditingSummary(record),
       form: buildFormFromRecord(record),
       amountPickerIndex: getAmountPickerIndex(record.amount),
-    });
-
-    wx.pageScrollTo({
-      scrollTop: 0,
-      duration: 250,
     });
   },
 
   handleCancelEdit() {
     this.resetForm();
   },
+
+  handlePopupClose() {
+    if (this.data.editingId) {
+      this.handleCancelEdit();
+    }
+  },
+
+  handlePopupTap() {},
 
   validateForm(form) {
     switch (form.type) {
@@ -1270,6 +1680,7 @@ Page({
       this.setData(
         {
           filterDate: "",
+          filterType: "all",
         },
         () => {
           if (this.data.editingId) {

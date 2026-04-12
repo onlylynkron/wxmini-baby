@@ -154,7 +154,7 @@ function buildMemberSummary(members) {
 }
 
 function getMemberRoleLabel(role) {
-  return role === "owner" ? "管理员" : "协作者";
+  return role === "owner" ? "管理者" : "协作者";
 }
 
 function sortMembers(members) {
@@ -178,26 +178,27 @@ function buildMemberList(members, canManageMembers) {
   let collaboratorIndex = 0;
 
   return sortMembers(members).map((member) => {
-    let displayName = "成员";
+    let displayName = "协作者";
     let hintText = "共同管理成员";
+    let roleLabel = member.isSelf ? "我" : "已加入";
 
-    if (member.isSelf) {
-      displayName = "我";
-      hintText = "当前使用设备";
-    } else if (member.role === "owner") {
-      displayName = "管理员";
-      hintText = "创建者";
+    if (member.role === "owner") {
+      displayName = "管理者";
+      hintText = member.isSelf ? "当前使用设备 · 创建者" : "创建者";
+      roleLabel = member.isSelf ? "我" : "主账号";
     } else {
       collaboratorIndex += 1;
-      displayName = `成员 ${collaboratorIndex}`;
+      displayName = `协作者 ${collaboratorIndex}`;
+      hintText = member.isSelf ? "当前使用设备" : "共同管理成员";
     }
 
     return {
       ...member,
       displayName,
       hintText,
-      roleLabel: getMemberRoleLabel(member.role),
+      roleLabel,
       canRemove: Boolean(canManageMembers && !member.isSelf && member.role !== "owner"),
+      canLeave: Boolean(member.isSelf && member.role !== "owner"),
     };
   });
 }
@@ -256,6 +257,7 @@ Page({
     collaborationSummaryText: "未开启云协作",
     storageMeta: createDefaultStorageMeta(),
     manageStats: [],
+    canLeaveBaby: false,
   },
 
   onLoad(options) {
@@ -334,6 +336,7 @@ Page({
       collaborationSummaryText: buildCollaborationSummaryText(storageMeta, members, canManageMembers),
       storageMeta,
       manageStats: buildManageStats(ageInfo, members, currentUserRole, storageMeta),
+      canLeaveBaby: currentUserRole !== "owner",
     });
   },
 
@@ -469,7 +472,7 @@ Page({
     const { memberId, memberName } = event.currentTarget.dataset;
     const confirmed = await confirmAction({
       title: "移除成员",
-      content: `确认移除${memberName}？移除后对方将不能继续管理当前宝宝。`,
+      content: `确认移除${memberName}？移除后对方将不能继续管理当前宝宝，历史记录会保留。`,
       confirmText: "确认移除",
     });
 
@@ -492,6 +495,39 @@ Page({
     } catch (error) {
       wx.showToast({
         title: error.message || "移除失败",
+        icon: "none",
+      });
+    } finally {
+      wx.hideLoading();
+    }
+  },
+
+  async handleLeaveBaby() {
+    const confirmed = await confirmAction({
+      title: "退出协作",
+      content: "确认退出当前宝宝协作？退出后你将无法继续管理当前宝宝，但历史记录会保留，不会删除。",
+      confirmText: "确认退出",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    wx.showLoading({
+      title: "退出中",
+      mask: true,
+    });
+
+    try {
+      const state = await babyService.leaveBaby();
+      this.applyState(state);
+      wx.showToast({
+        title: "已退出协作",
+        icon: "success",
+      });
+    } catch (error) {
+      wx.showToast({
+        title: error.message || "退出失败",
         icon: "none",
       });
     } finally {

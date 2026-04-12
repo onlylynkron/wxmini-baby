@@ -485,6 +485,18 @@ async function handleRemoveMember(openId, data) {
   return buildDashboard(openId);
 }
 
+async function handleLeaveBaby(openId) {
+  const activeBabyId = await ensureActiveBabyId(openId);
+  const currentMember = await ensureMembership(openId, activeBabyId);
+
+  if (currentMember.role === "owner") {
+    throw new Error("管理者不能直接退出，请先保留当前宝宝管理权限");
+  }
+
+  await db.collection(COLLECTIONS.members).doc(currentMember.id).remove();
+  return buildDashboard(openId);
+}
+
 exports.main = async (event) => {
   const { OPENID: openId } = cloud.getWXContext();
 
@@ -511,6 +523,9 @@ exports.main = async (event) => {
         break;
       case "removeMember":
         data = await handleRemoveMember(openId, event.data || {});
+        break;
+      case "leaveBaby":
+        data = await handleLeaveBaby(openId);
         break;
       default:
         throw new Error("未知操作");

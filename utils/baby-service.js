@@ -359,10 +359,19 @@ async function removeMember(memberId) {
   throw new Error("当前模式不支持成员管理，请先开启云开发。");
 }
 
+async function leaveBaby() {
+  if (isCloudEnabled()) {
+    return callCloud("leaveBaby");
+  }
+
+  throw new Error("当前模式不支持退出协作，请先开启云开发。");
+}
+
 module.exports = {
   bootstrap,
   clearAllRecords,
   deleteRecord,
+  leaveBaby,
   joinBaby,
   removeMember,
   saveProfile,
