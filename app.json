@@ -1,0 +1,35 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/manage/manage"
+  ],
+  "window": {
+    "navigationBarTitleText": "宝宝护理记录",
+    "navigationBarBackgroundColor": "#FFF7F1",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#FFF7F1",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#95A0B1",
+    "selectedColor": "#E58A67",
+    "backgroundColor": "#FFF8F4",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "记录",
+        "iconPath": "assets/tabbar/record.png",
+        "selectedIconPath": "assets/tabbar/record-active.png"
+      },
+      {
+        "pagePath": "pages/manage/manage",
+        "text": "管理",
+        "iconPath": "assets/tabbar/manage.png",
+        "selectedIconPath": "assets/tabbar/manage-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

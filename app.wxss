@@ -1,0 +1,26 @@
+page {
+  min-height: 100%;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 222, 198, 0.96) 0%, rgba(255, 222, 198, 0) 34%),
+    radial-gradient(circle at 92% 12%, rgba(255, 205, 214, 0.58) 0%, rgba(255, 205, 214, 0) 28%),
+    linear-gradient(180deg, #fffaf7 0%, #f4f7ff 100%);
+  color: #2d3440;
+  font-family:
+    "SF Pro Rounded",
+    "HarmonyOS Sans SC",
+    "MiSans",
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei UI",
+    sans-serif;
+}
+
+view,
+text,
+button,
+picker,
+input,
+textarea {
+  box-sizing: border-box;
+  font-family: inherit;
+}

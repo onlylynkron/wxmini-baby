@@ -1,0 +1,356 @@
+<view class="page">
+  <view class="hero-card">
+    <view class="hero-text">
+      <text class="hero-title">{{babyProfile.name || '我的宝宝'}}</text>
+      <text class="hero-desc">{{ageDetailText}}</text>
+    </view>
+
+    <view class="hero-stats">
+      <view wx:for="{{heroStats}}" wx:key="label" class="stat-card">
+        <text class="stat-label">{{item.label}}</text>
+        <text class="stat-value">{{item.value}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="panel record-entry-panel">
+    <view class="section-head">
+      <text class="section-title">{{editingId ? '编辑记录' : '新增记录'}}</text>
+      <text class="section-note">{{editingId ? '编辑中' : '打开即可记录'}}</text>
+    </view>
+
+    <view class="field">
+      <text class="field-label">记录类型</text>
+      <scroll-view scroll-x class="scroll-select">
+        <view class="scroll-track">
+          <view
+            wx:for="{{recordTypes}}"
+            wx:key="id"
+            class="option-card {{form.type === item.id ? 'option-card-active' : ''}}"
+            data-type="{{item.id}}"
+            bindtap="handleTypeChange"
+          >
+            <text class="option-title">{{item.label}}</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <view class="field-row">
+      <view class="field">
+        <text class="field-label">日期</text>
+        <picker mode="date" value="{{form.date}}" bindchange="handleDateChange">
+          <view class="picker-field">{{form.date}}</view>
+        </picker>
+      </view>
+      <view class="field">
+        <text class="field-label">时间</text>
+        <picker mode="time" value="{{form.time}}" bindchange="handleTimeChange">
+          <view class="picker-field">{{form.time}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <block wx:if="{{form.type === 'feeding'}}">
+      <view class="field">
+        <text class="field-label">喂养方式</text>
+        <scroll-view scroll-x class="scroll-select">
+          <view class="scroll-track">
+            <view
+              wx:for="{{feedingMethods}}"
+              wx:key="*this"
+              class="pill-option {{form.method === item ? 'pill-option-active' : ''}}"
+              data-method="{{item}}"
+              bindtap="handleFeedingMethodChange"
+            >
+              {{item}}
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+      <view class="field-row">
+        <view class="field">
+          <text class="field-label">奶量（ml）</text>
+          <input
+            class="input-field"
+            type="number"
+            placeholder="例如 120"
+            value="{{form.amount}}"
+            bindinput="handleAmountInput"
+          />
+        </view>
+        <view class="field">
+          <text class="field-label">常用奶量</text>
+          <picker
+            mode="selector"
+            range="{{amountOptions}}"
+            range-key="label"
+            value="{{amountPickerIndex}}"
+            bindchange="handleAmountOptionChange"
+          >
+            <view class="picker-field {{form.amount ? '' : 'picker-placeholder'}}">
+              {{form.amount ? form.amount + ' ml' : '选择常用奶量'}}
+            </view>
+          </picker>
+        </view>
+      </view>
+    </block>
+
+    <block wx:if="{{form.type === 'diaper'}}">
+      <view class="field">
+        <text class="field-label">尿布情况</text>
+        <scroll-view scroll-x class="scroll-select">
+          <view class="scroll-track">
+            <view
+              wx:for="{{diaperTypes}}"
+              wx:key="*this"
+              class="pill-option {{form.diaperType === item ? 'pill-option-active' : ''}}"
+              data-diaper-type="{{item}}"
+              bindtap="handleDiaperTypeChange"
+            >
+              {{item}}
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <view wx:if="{{form.diaperType === '便便' || form.diaperType === '混合'}}" class="field">
+        <text class="field-label">便便颜色</text>
+        <view class="poop-grid">
+          <view
+            wx:for="{{poopColors}}"
+            wx:key="id"
+            class="poop-card {{form.poopColorId === item.id ? 'poop-card-active' : ''}}"
+            data-color-id="{{item.id}}"
+            bindtap="handlePoopColorChange"
+          >
+            <image class="poop-image" src="{{item.image}}" mode="aspectFit" />
+            <text class="poop-name">{{item.label}}</text>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <block wx:if="{{form.type === 'sleep'}}">
+      <view class="field">
+        <text class="field-label">睡眠类型</text>
+        <scroll-view scroll-x class="scroll-select">
+          <view class="scroll-track">
+            <view
+              wx:for="{{sleepTypes}}"
+              wx:key="*this"
+              class="pill-option {{form.sleepType === item ? 'pill-option-active' : ''}}"
+              data-sleep-type="{{item}}"
+              bindtap="handleSleepTypeChange"
+            >
+              {{item}}
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+      <view class="field">
+        <text class="field-label">睡眠时长（分钟）</text>
+        <input
+          class="input-field"
+          type="number"
+          placeholder="例如 90"
+          value="{{form.durationMinutes}}"
+          bindinput="handleDurationInput"
+        />
+      </view>
+    </block>
+
+    <block wx:if="{{form.type === 'medicine'}}">
+      <view class="field">
+        <text class="field-label">药名</text>
+        <input
+          class="input-field"
+          placeholder="例如 维生素D"
+          value="{{form.medicineName}}"
+          bindinput="handleMedicineNameInput"
+        />
+      </view>
+      <view class="field-row">
+        <view class="field">
+          <text class="field-label">剂量</text>
+          <input
+            class="input-field"
+            type="digit"
+            placeholder="例如 5"
+            value="{{form.dosage}}"
+            bindinput="handleDosageInput"
+          />
+        </view>
+        <view class="field">
+          <text class="field-label">单位</text>
+          <scroll-view scroll-x class="scroll-select compact-scroll">
+            <view class="scroll-track">
+              <view
+                wx:for="{{medicineUnits}}"
+                wx:key="*this"
+                class="pill-option pill-option-compact {{form.doseUnit === item ? 'pill-option-active' : ''}}"
+                data-dose-unit="{{item}}"
+                bindtap="handleDoseUnitChange"
+              >
+                {{item}}
+              </view>
+            </view>
+          </scroll-view>
+        </view>
+      </view>
+    </block>
+
+    <block wx:if="{{form.type === 'temperature'}}">
+      <view class="field">
+        <text class="field-label">体温（℃）</text>
+        <input
+          class="input-field"
+          type="digit"
+          placeholder="例如 36.7"
+          value="{{form.temperature}}"
+          bindinput="handleTemperatureInput"
+        />
+      </view>
+      <view class="field">
+        <text class="field-label">测量方式</text>
+        <scroll-view scroll-x class="scroll-select">
+          <view class="scroll-track">
+            <view
+              wx:for="{{temperatureMethods}}"
+              wx:key="*this"
+              class="pill-option {{form.temperatureMethod === item ? 'pill-option-active' : ''}}"
+              data-method="{{item}}"
+              bindtap="handleTemperatureMethodChange"
+            >
+              {{item}}
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+    </block>
+
+    <block wx:if="{{form.type === 'growth'}}">
+      <view class="field-row">
+        <view class="field">
+          <text class="field-label">身高（cm）</text>
+          <input
+            class="input-field"
+            type="digit"
+            placeholder="例如 65"
+            value="{{form.height}}"
+            bindinput="handleHeightInput"
+          />
+        </view>
+        <view class="field">
+          <text class="field-label">体重（kg）</text>
+          <input
+            class="input-field"
+            type="digit"
+            placeholder="例如 6.8"
+            value="{{form.weight}}"
+            bindinput="handleWeightInput"
+          />
+        </view>
+      </view>
+      <view class="field">
+        <text class="field-label">头围（cm）</text>
+        <input
+          class="input-field"
+          type="digit"
+          placeholder="例如 41"
+          value="{{form.headCircumference}}"
+          bindinput="handleHeadCircumferenceInput"
+        />
+      </view>
+    </block>
+
+    <view class="field">
+      <text class="field-label">备注</text>
+      <textarea
+        class="textarea-field"
+        placeholder="记录状态、反应或其他说明"
+        value="{{form.note}}"
+        maxlength="200"
+        bindinput="handleNoteInput"
+      ></textarea>
+    </view>
+
+    <button class="primary-btn" bindtap="handleSubmit">
+      {{editingId ? '更新记录' : '保存记录'}}
+    </button>
+    <button wx:if="{{editingId}}" class="secondary-btn" bindtap="handleCancelEdit">取消编辑</button>
+  </view>
+
+  <view class="panel">
+    <view class="section-head">
+      <text class="section-title">历史筛选</text>
+      <text class="section-note">{{filterModeText}}</text>
+    </view>
+
+    <view class="field">
+      <text class="field-label">选择日期</text>
+      <picker mode="date" value="{{filterPickerValue}}" bindchange="handleFilterDateChange">
+        <view class="picker-field {{filterDate ? '' : 'picker-placeholder'}}">
+          {{filterDate || '选择日期筛选历史记录'}}
+        </view>
+      </picker>
+    </view>
+
+    <view class="filter-actions">
+      <button class="ghost-btn filter-reset-btn" size="mini" disabled="{{!filterDate}}" bindtap="handleResetFilter">
+        查看全部
+      </button>
+      <text class="filter-tip">{{filterTip}}</text>
+    </view>
+
+    <view wx:if="{{filterDate}}" class="mini-stats">
+      <view wx:for="{{filterStats}}" wx:key="label" class="mini-stat">
+        <text class="mini-stat-label">{{item.label}}</text>
+        <text class="mini-stat-value">{{item.value}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="section-head">
+      <text class="section-title">最近记录</text>
+      <text class="section-note">{{listNote}}</text>
+    </view>
+
+    <view class="history-actions">
+      <button
+        class="ghost-btn history-clear-btn"
+        size="mini"
+        disabled="{{!allRecords.length}}"
+        bindtap="handleClearAllRecords"
+      >
+        清空全部记录
+      </button>
+    </view>
+
+    <view wx:if="{{!records.length}}" class="empty-state">
+      <text class="empty-title">{{emptyTitle}}</text>
+      <text class="empty-desc">{{emptyDesc}}</text>
+    </view>
+
+    <view wx:for="{{records}}" wx:key="id" class="record-card">
+      <view class="record-top">
+        <view class="record-badge {{item.badgeClass}}">{{item.typeLabel}}</view>
+        <text class="record-time">{{item.displayTime}}</text>
+      </view>
+      <view class="record-main">
+        <text class="record-title">{{item.title}}</text>
+        <text wx:if="{{item.subtitle}}" class="record-subtitle">{{item.subtitle}}</text>
+        <text wx:if="{{item.note}}" class="record-note">备注：{{item.note}}</text>
+      </view>
+      <view class="record-actions">
+        <button class="ghost-btn ghost-edit-btn" size="mini" data-id="{{item.id}}" bindtap="handleEdit">
+          编辑
+        </button>
+        <button class="ghost-btn ghost-delete-btn" size="mini" data-id="{{item.id}}" bindtap="handleDelete">
+          删除
+        </button>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,111 @@
+<view class="page">
+  <view class="hero-card">
+    <view class="hero-text">
+      <text class="hero-title">{{babyProfile.name || '我的宝宝'}}</text>
+      <text class="hero-desc">{{ageDetailText}}</text>
+    </view>
+
+    <view class="hero-stats">
+      <view wx:for="{{manageStats}}" wx:key="label" class="stat-card">
+        <text class="stat-label">{{item.label}}</text>
+        <text class="stat-value">{{item.value}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="section-head">
+      <text class="section-title">宝宝资料</text>
+      <text class="section-note">{{ageShortText}}</text>
+    </view>
+
+    <view wx:if="{{profileCollapsed}}" class="profile-summary-card">
+      <view class="profile-summary-main">
+        <text class="profile-summary-name">{{babyProfile.name || '我的宝宝'}}</text>
+        <text class="profile-summary-desc">
+          {{babyProfile.birthDate || '未设置出生日期'}} · {{ageDetailText}}
+        </text>
+      </view>
+      <button class="ghost-btn profile-toggle-btn" size="mini" bindtap="handleExpandProfile">编辑资料</button>
+    </view>
+    <block wx:else>
+      <view class="field">
+        <text class="field-label">宝宝昵称</text>
+        <input
+          class="input-field"
+          placeholder="例如 小奶糖"
+          value="{{profileForm.name}}"
+          bindinput="handleProfileNameInput"
+        />
+      </view>
+
+      <view class="field">
+        <text class="field-label">出生日期</text>
+        <picker mode="date" value="{{profileForm.birthDate || todayDate}}" bindchange="handleBirthDateChange">
+          <view class="picker-field {{profileForm.birthDate ? '' : 'picker-placeholder'}}">
+            {{profileForm.birthDate || '选择出生日期'}}
+          </view>
+        </picker>
+      </view>
+
+      <view class="info-card">
+        <text class="info-card-title">年龄自动计算</text>
+        <text class="info-card-desc">{{ageDetailText}}</text>
+      </view>
+
+      <button class="primary-btn" bindtap="handleSaveProfile">保存宝宝资料</button>
+      <button class="secondary-btn" bindtap="handleCollapseProfile">收起资料</button>
+    </block>
+  </view>
+
+  <view class="panel">
+    <view class="section-head">
+      <text class="section-title">共同管理</text>
+      <text class="section-note">{{memberSummaryText}}</text>
+    </view>
+
+    <view wx:if="{{collaborationCollapsed}}" class="profile-summary-card collaboration-summary-card">
+      <view class="profile-summary-main">
+        <text class="profile-summary-name">共同管理</text>
+        <text class="profile-summary-desc">{{collaborationSummaryText}}</text>
+      </view>
+      <button class="ghost-btn profile-toggle-btn" size="mini" bindtap="handleExpandCollaboration">展开协作</button>
+    </view>
+    <block wx:else>
+      <view class="manage-card">
+        <text class="manage-card-title">邀请家人一起管理</text>
+        <text class="manage-card-desc">{{collaborationHintText}}</text>
+        <button wx:if="{{storageMeta.collaborationEnabled}}" class="primary-btn manage-share-btn" open-type="share">
+          分享给微信好友
+        </button>
+        <text wx:else class="helper-text">开启云开发后可邀请家人共同记录。</text>
+      </view>
+
+      <view class="member-list">
+        <view wx:for="{{memberList}}" wx:key="id" class="member-item">
+          <view class="member-main">
+            <view class="member-name-row">
+              <text class="member-name">{{item.displayName}}</text>
+              <text class="member-role-tag {{item.role === 'owner' ? 'member-role-owner' : 'member-role-manager'}}">
+                {{item.roleLabel}}
+              </text>
+            </view>
+            <text class="member-desc">{{item.hintText}}</text>
+          </view>
+          <button
+            wx:if="{{item.canRemove}}"
+            class="ghost-btn member-remove-btn"
+            size="mini"
+            data-member-id="{{item.id}}"
+            data-member-name="{{item.displayName}}"
+            bindtap="handleRemoveMember"
+          >
+            移除
+          </button>
+        </view>
+      </view>
+
+      <button class="secondary-btn" bindtap="handleCollapseCollaboration">收起协作</button>
+    </block>
+  </view>
+</view>
