@@ -106,6 +106,76 @@ function sortRecords(records) {
   });
 }
 
+function normalizePoopShapeId(shapeId) {
+  const rawValue =
+    shapeId !== undefined && shapeId !== null
+      ? shapeId
+      : "";
+  const value = String(rawValue).trim();
+
+  switch (value) {
+    case "0":
+      return "paste";
+    case "1":
+      return "dry";
+    case "2":
+      return "cream";
+    case "3":
+      return "curd";
+    case "4":
+      return "watery";
+    case "5":
+      return "foamy";
+    case "糊状":
+      return "paste";
+    case "干糊":
+      return "dry";
+    case "膏状":
+      return "cream";
+    case "奶瓣":
+      return "curd";
+    case "稀水样":
+      return "watery";
+    case "泡沫状":
+      return "foamy";
+    default:
+      return value;
+  }
+}
+
+function normalizeDiaperRashId(rashId) {
+  if (rashId === true || rashId === 1) {
+    return "yes";
+  }
+
+  if (rashId === false || rashId === 0) {
+    return "no";
+  }
+
+  const rawValue =
+    rashId !== undefined && rashId !== null
+      ? rashId
+      : "";
+  const value = String(rawValue).trim();
+
+  switch (value) {
+    case "true":
+    case "1":
+    case "有":
+      return "yes";
+    case "false":
+    case "0":
+    case "无":
+      return "no";
+    case "是":
+      return "yes";
+    case "否":
+      return "no";
+    default:
+      return value;
+  }
+}
+
 function normalizeRecord(record, babyId) {
   const timestamp = record.recordAt || Date.now();
   return {
@@ -117,8 +187,8 @@ function normalizeRecord(record, babyId) {
     amount: record.amount !== undefined && record.amount !== null ? String(record.amount) : "",
     diaperType: record.diaperType || "",
     poopColorId: record.poopColorId || "",
-    poopShapeId: record.poopShapeId || "",
-    diaperRash: record.diaperRash || "",
+    poopShapeId: normalizePoopShapeId(record.poopShapeId),
+    diaperRash: normalizeDiaperRashId(record.diaperRash),
     durationMinutes:
       record.durationMinutes !== undefined && record.durationMinutes !== null
         ? String(record.durationMinutes)

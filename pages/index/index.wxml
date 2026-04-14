@@ -347,28 +347,31 @@
   <view class="panel">
     <view class="section-head">
       <text class="section-title">最近记录</text>
-      <text class="section-note">{{listNote}}</text>
+      <view class="records-head-side">
+        <text class="section-note">{{listNote}}</text>
+        <view
+          class="record-filter-trigger {{hasActiveFilter ? 'record-filter-trigger-active' : ''}}"
+          bindtap="handleToggleRecordFilter"
+        >
+          <image class="record-filter-trigger-icon" src="/assets/icons/filter.svg" mode="aspectFit" />
+          <view wx:if="{{hasActiveFilter}}" class="record-filter-trigger-dot"></view>
+        </view>
+      </view>
     </view>
 
-    <view class="record-filter-box">
-      <view class="record-filter-toggle" bindtap="handleToggleRecordFilter">
-        <view class="record-filter-toggle-main">
-          <text class="record-filter-toggle-title">筛选条件</text>
-          <text class="record-filter-toggle-desc">{{filterTip}}</text>
+    <view wx:if="{{!filterCollapsed}}" class="record-filter-box">
+      <view class="record-filter-box-head">
+        <view class="record-filter-box-main">
+          <text class="record-filter-box-title">筛选条件</text>
+          <text class="record-filter-box-desc">{{filterTip}}</text>
         </view>
-        <view class="record-filter-toggle-side">
-          <text wx:if="{{hasActiveFilter}}" class="record-filter-toggle-tag">已筛选</text>
-          <text class="record-filter-toggle-action">{{filterCollapsed ? '展开' : '收起'}}</text>
+        <view class="record-filter-box-side">
+          <text wx:if="{{hasActiveFilter}}" class="record-filter-box-tag">已筛选</text>
+          <text class="record-filter-box-action" bindtap="handleToggleRecordFilter">收起</text>
         </view>
       </view>
 
-      <view wx:if="{{filterCollapsed && hasActiveFilter}}" class="record-filter-collapsed-actions">
-        <button class="ghost-btn filter-reset-btn" size="mini" bindtap="handleResetFilter">
-          重置筛选
-        </button>
-      </view>
-
-      <view wx:if="{{!filterCollapsed}}" class="record-filter-content">
+      <view class="record-filter-content">
         <view class="field record-filter-field">
           <text class="field-label">分类</text>
           <scroll-view scroll-x class="scroll-select compact-scroll">
@@ -416,51 +419,53 @@
       </view>
     </view>
 
-    <view class="history-actions">
-      <button
-        class="ghost-btn history-clear-btn"
-        size="mini"
-        disabled="{{!allRecords.length}}"
-        bindtap="handleClearAllRecords"
-      >
-        清空全部记录
-      </button>
-    </view>
-
     <view wx:if="{{!records.length}}" class="empty-state">
       <text class="empty-title">{{emptyTitle}}</text>
       <text class="empty-desc">{{emptyDesc}}</text>
     </view>
 
-    <view wx:for="{{records}}" wx:key="id" class="record-card">
-      <view class="record-top">
-        <view class="record-meta">
-          <view class="record-badge {{item.badgeClass}}">{{item.typeLabel}}</view>
-          <text class="record-time">{{item.displayTime}}</text>
+    <view wx:for="{{recordGroups}}" wx:key="date" wx:for-item="group" class="record-group">
+      <view class="record-group-head">
+        <view class="record-group-main">
+          <text class="record-group-date">{{group.dateLabel}}</text>
+          <text class="record-group-raw-date">{{group.date}}</text>
+        </view>
+        <view class="record-group-stats">
+          <text class="record-group-stat">{{group.feedingSummaryText}}</text>
+          <text class="record-group-stat">{{group.diaperSummaryText}}</text>
         </view>
       </view>
 
-      <view class="record-body">
-        <view class="record-main">
-          <text class="record-title">{{item.title}}</text>
-          <text wx:if="{{item.subtitle}}" class="record-subtitle">{{item.subtitle}}</text>
-          <text wx:if="{{item.note}}" class="record-note">备注：{{item.note}}</text>
+      <view wx:for="{{group.records}}" wx:key="id" wx:for-item="item" class="record-card">
+        <view class="record-top">
+          <view class="record-meta">
+            <view class="record-badge {{item.badgeClass}}">{{item.typeLabel}}</view>
+            <text class="record-time">{{item.displayTime}}</text>
+          </view>
         </view>
 
-        <view class="record-actions">
-          <view
-            class="record-icon-btn record-icon-edit"
-            data-id="{{item.id}}"
-            bindtap="handleEdit"
-          >
-            <image class="record-action-icon" src="/assets/icons/edit.svg" mode="aspectFit" />
+        <view class="record-body">
+          <view class="record-main">
+            <text class="record-title">{{item.title}}</text>
+            <text wx:if="{{item.subtitle}}" class="record-subtitle">{{item.subtitle}}</text>
+            <text wx:if="{{item.note}}" class="record-note">备注：{{item.note}}</text>
           </view>
-          <view
-            class="record-icon-btn record-icon-delete"
-            data-id="{{item.id}}"
-            bindtap="handleDelete"
-          >
-            <image class="record-action-icon" src="/assets/icons/delete.svg" mode="aspectFit" />
+
+          <view class="record-actions">
+            <view
+              class="record-icon-btn record-icon-edit"
+              data-id="{{item.id}}"
+              bindtap="handleEdit"
+            >
+              <image class="record-action-icon" src="/assets/icons/edit.svg" mode="aspectFit" />
+            </view>
+            <view
+              class="record-icon-btn record-icon-delete"
+              data-id="{{item.id}}"
+              bindtap="handleDelete"
+            >
+              <image class="record-action-icon" src="/assets/icons/delete.svg" mode="aspectFit" />
+            </view>
           </view>
         </view>
       </view>

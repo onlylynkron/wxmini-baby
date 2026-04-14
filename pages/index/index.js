@@ -68,13 +68,28 @@ const POOP_COLOR_MAP = POOP_COLORS.reduce((result, item) => {
   return result;
 }, {});
 
+const POOP_COLOR_LABEL_MAP = POOP_COLORS.reduce((result, item) => {
+  result[item.label] = item.id;
+  return result;
+}, {});
+
 const POOP_SHAPE_MAP = POOP_SHAPES.reduce((result, item) => {
   result[item.id] = item;
   return result;
 }, {});
 
+const POOP_SHAPE_LABEL_MAP = POOP_SHAPES.reduce((result, item) => {
+  result[item.label] = item.id;
+  return result;
+}, {});
+
 const DIAPER_RASH_MAP = DIAPER_RASH_OPTIONS.reduce((result, item) => {
   result[item.id] = item;
+  return result;
+}, {});
+
+const DIAPER_RASH_LABEL_MAP = DIAPER_RASH_OPTIONS.reduce((result, item) => {
+  result[item.label] = item.id;
   return result;
 }, {});
 
@@ -208,6 +223,104 @@ function normalizeFeedingMethod(method) {
 
 function isBreastfeedingMethod(method) {
   return normalizeFeedingMethod(method) === "母乳";
+}
+
+function normalizeDiaperType(diaperType) {
+  const value = String(diaperType || "").trim();
+  return DIAPER_TYPES.includes(value) ? value : "";
+}
+
+function normalizePoopColorId(colorId) {
+  const rawValue =
+    colorId !== undefined && colorId !== null
+      ? colorId
+      : "";
+  const value = String(rawValue).trim();
+  if (!value) {
+    return "";
+  }
+
+  if (POOP_COLOR_MAP[value]) {
+    return value;
+  }
+
+  const numericIndex = Number(value);
+  if (!Number.isNaN(numericIndex) && POOP_COLORS[numericIndex]) {
+    return POOP_COLORS[numericIndex].id;
+  }
+
+  return POOP_COLOR_LABEL_MAP[value] || "";
+}
+
+function normalizePoopShapeId(shapeId) {
+  const rawValue =
+    shapeId !== undefined && shapeId !== null
+      ? shapeId
+      : "";
+  const value = String(rawValue).trim();
+  if (!value) {
+    return "";
+  }
+
+  if (POOP_SHAPE_MAP[value]) {
+    return value;
+  }
+
+  const numericIndex = Number(value);
+  if (!Number.isNaN(numericIndex) && POOP_SHAPES[numericIndex]) {
+    return POOP_SHAPES[numericIndex].id;
+  }
+
+  return POOP_SHAPE_LABEL_MAP[value] || "";
+}
+
+function normalizeDiaperRashId(rashId) {
+  if (rashId === true || rashId === 1) {
+    return "yes";
+  }
+
+  if (rashId === false || rashId === 0) {
+    return "no";
+  }
+
+  const rawValue =
+    rashId !== undefined && rashId !== null
+      ? rashId
+      : "";
+  const value = String(rawValue).trim();
+  if (!value) {
+    return "";
+  }
+
+  if (DIAPER_RASH_MAP[value]) {
+    return value;
+  }
+
+  if (["true", "1", "有", "存在"].includes(value)) {
+    return "yes";
+  }
+
+  if (["false", "0", "无"].includes(value)) {
+    return "no";
+  }
+
+  return DIAPER_RASH_LABEL_MAP[value] || "";
+}
+
+function normalizeIncomingRecord(record) {
+  return {
+    ...record,
+    diaperType: normalizeDiaperType(record.diaperType || record.typeLabel),
+    poopColorId: normalizePoopColorId(record.poopColorId || record.poopColor || record.colorId),
+    poopShapeId: normalizePoopShapeId(record.poopShapeId || record.poopShape || record.shapeId),
+    diaperRash: normalizeDiaperRashId(
+      record.diaperRash !== undefined
+        ? record.diaperRash
+        : record.rash !== undefined
+          ? record.rash
+          : record.hasRash
+    ),
+  };
 }
 
 function getPreferredFeedingMethod() {
@@ -853,36 +966,108 @@ function buildActiveFilterParts(filterDate, filterType) {
   return parts;
 }
 
+function formatGroupDateLabel(dateText) {
+  if (!dateText) {
+    return "未分组日期";
+  }
+
+  const now = new Date();
+  const todayText = formatDate(now);
+  const yesterdayText = formatDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+
+  if (dateText === todayText) {
+    return "今天";
+  }
+
+  if (dateText === yesterdayText) {
+    return "昨天";
+  }
+
+  const [year, month, day] = String(dateText).split("-");
+  if (!year || !month || !day) {
+    return dateText;
+  }
+
+  if (Number(year) === now.getFullYear()) {
+    return `${Number(month)}月${Number(day)}日`;
+  }
+
+  return `${year}年${Number(month)}月${Number(day)}日`;
+}
+
+function buildRecordGroups(filteredRecords, allRecords) {
+  const groupMap = filteredRecords.reduce((result, record) => {
+    const dateKey = record.date || "unknown";
+
+    if (!result[dateKey]) {
+      const daySummary = record.date ? getSummary(allRecords, record.date) : createSummary();
+      result[dateKey] = {
+        date: dateKey,
+        dateLabel: formatGroupDateLabel(record.date),
+        feedingSummaryText: `奶量 ${daySummary.totalAmount} ml`,
+        diaperSummaryText: `尿布 ${daySummary.diaperCount} 次`,
+        records: [],
+      };
+    }
+
+    result[dateKey].records.push(buildRecordView(record));
+    return result;
+  }, {});
+
+  return Object.keys(groupMap)
+    .sort((left, right) => {
+      if (left === right) {
+        return 0;
+      }
+
+      return left > right ? -1 : 1;
+    })
+    .map((dateKey) => groupMap[dateKey]);
+}
+
 function buildFormFromRecord(record) {
+  const normalizedRecord = normalizeIncomingRecord(record);
   return {
-    type: record.type,
-    date: record.date,
-    time: record.time,
-    note: record.note || "",
-    method: normalizeFeedingMethod(record.method || getPreferredFeedingMethod()),
-    amount: record.amount !== undefined && record.amount !== null ? String(record.amount) : "",
-    diaperType: record.diaperType || "",
-    poopColorId: record.poopColorId || "",
-    poopShapeId: record.poopShapeId || "",
-    diaperRash: record.diaperRash || "",
-    sleepType: record.sleepType || SLEEP_TYPES[0],
+    type: normalizedRecord.type,
+    date: normalizedRecord.date,
+    time: normalizedRecord.time,
+    note: normalizedRecord.note || "",
+    method: normalizeFeedingMethod(normalizedRecord.method || getPreferredFeedingMethod()),
+    amount:
+      normalizedRecord.amount !== undefined && normalizedRecord.amount !== null
+        ? String(normalizedRecord.amount)
+        : "",
+    diaperType: normalizedRecord.diaperType || "",
+    poopColorId: normalizedRecord.poopColorId || "",
+    poopShapeId: normalizedRecord.poopShapeId || "",
+    diaperRash: normalizedRecord.diaperRash || "",
+    sleepType: normalizedRecord.sleepType || SLEEP_TYPES[0],
     durationMinutes:
-      record.durationMinutes !== undefined && record.durationMinutes !== null
-        ? String(record.durationMinutes)
+      normalizedRecord.durationMinutes !== undefined && normalizedRecord.durationMinutes !== null
+        ? String(normalizedRecord.durationMinutes)
         : "",
-    medicineName: record.medicineName || "",
-    dosage: record.dosage !== undefined && record.dosage !== null ? String(record.dosage) : "",
-    doseUnit: record.doseUnit || MEDICINE_UNITS[0],
+    medicineName: normalizedRecord.medicineName || "",
+    dosage:
+      normalizedRecord.dosage !== undefined && normalizedRecord.dosage !== null
+        ? String(normalizedRecord.dosage)
+        : "",
+    doseUnit: normalizedRecord.doseUnit || MEDICINE_UNITS[0],
     temperature:
-      record.temperature !== undefined && record.temperature !== null
-        ? String(record.temperature)
+      normalizedRecord.temperature !== undefined && normalizedRecord.temperature !== null
+        ? String(normalizedRecord.temperature)
         : "",
-    temperatureMethod: record.temperatureMethod || TEMPERATURE_METHODS[0],
-    height: record.height !== undefined && record.height !== null ? String(record.height) : "",
-    weight: record.weight !== undefined && record.weight !== null ? String(record.weight) : "",
+    temperatureMethod: normalizedRecord.temperatureMethod || TEMPERATURE_METHODS[0],
+    height:
+      normalizedRecord.height !== undefined && normalizedRecord.height !== null
+        ? String(normalizedRecord.height)
+        : "",
+    weight:
+      normalizedRecord.weight !== undefined && normalizedRecord.weight !== null
+        ? String(normalizedRecord.weight)
+        : "",
     headCircumference:
-      record.headCircumference !== undefined && record.headCircumference !== null
-        ? String(record.headCircumference)
+      normalizedRecord.headCircumference !== undefined && normalizedRecord.headCircumference !== null
+        ? String(normalizedRecord.headCircumference)
         : "",
   };
 }
@@ -1008,6 +1193,7 @@ Page({
     latestStatusCards: createLatestStatusCards(),
     allRecords: [],
     records: [],
+    recordGroups: [],
     todaySummary: createSummary(),
     filteredSummary: createSummary(),
     filterStats: [],
@@ -1140,7 +1326,7 @@ Page({
     const storageMeta = state.storageMeta || createDefaultStorageMeta();
     const currentUserRole = state.currentUserRole || "owner";
     const canManageMembers = Boolean(state.canManageMembers);
-    const allRecords = sortRecords(state.records || []);
+    const allRecords = sortRecords((state.records || []).map(normalizeIncomingRecord));
     const todaySummary = getSummary(allRecords, this.data.todayDate);
     const ageInfo = getAgeInfo(babyProfile.birthDate);
     const heroStats = buildHeroStats(ageInfo, members, todaySummary);
@@ -1246,6 +1432,7 @@ Page({
     const records = sortRecords(allRecords);
     const filteredRecords = filterRecords(records, this.data.filterDate, this.data.filterType);
     const filteredSummary = getSummary(filteredRecords);
+    const recordGroups = buildRecordGroups(filteredRecords, records);
     const activeFilterParts = buildActiveFilterParts(this.data.filterDate, this.data.filterType);
     const hasActiveFilter = activeFilterParts.length > 0;
     const filterSummaryText = hasActiveFilter
@@ -1255,6 +1442,7 @@ Page({
     this.setData({
       allRecords: records,
       records: filteredRecords.map(buildRecordView),
+      recordGroups,
       filteredSummary,
       filterStats: buildFilterStats(filteredSummary),
       filterPickerValue: this.data.filterDate || this.data.todayDate,

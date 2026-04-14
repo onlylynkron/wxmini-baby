@@ -111,4 +111,23 @@
       <button class="secondary-btn" bindtap="handleCollapseCollaboration">收起协作</button>
     </block>
   </view>
+
+  <view wx:if="{{canClearRecords}}" class="panel">
+    <view class="section-head">
+      <text class="section-title">记录管理</text>
+      <text class="section-note">{{recordCount}} 条</text>
+    </view>
+
+    <view class="manage-card danger-manage-card">
+      <text class="manage-card-title">清空全部记录</text>
+      <text class="manage-card-desc">仅管理员可操作，确认后当前宝宝全部记录将被删除且不可恢复。</text>
+      <button
+        class="secondary-btn danger-action-btn"
+        disabled="{{!recordCount}}"
+        bindtap="handleClearAllRecords"
+      >
+        清空全部记录
+      </button>
+    </view>
+  </view>
 </view>

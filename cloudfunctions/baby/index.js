@@ -61,6 +61,88 @@ function mapDocument(document) {
   };
 }
 
+function normalizePoopShapeId(shapeId) {
+  const rawValue =
+    shapeId !== undefined && shapeId !== null
+      ? shapeId
+      : "";
+  const value = String(rawValue).trim();
+
+  switch (value) {
+    case "0":
+      return "paste";
+    case "1":
+      return "dry";
+    case "2":
+      return "cream";
+    case "3":
+      return "curd";
+    case "4":
+      return "watery";
+    case "5":
+      return "foamy";
+    case "糊状":
+      return "paste";
+    case "干糊":
+      return "dry";
+    case "膏状":
+      return "cream";
+    case "奶瓣":
+      return "curd";
+    case "稀水样":
+      return "watery";
+    case "泡沫状":
+      return "foamy";
+    default:
+      return value;
+  }
+}
+
+function normalizeDiaperRashId(rashId) {
+  if (rashId === true || rashId === 1) {
+    return "yes";
+  }
+
+  if (rashId === false || rashId === 0) {
+    return "no";
+  }
+
+  const rawValue =
+    rashId !== undefined && rashId !== null
+      ? rashId
+      : "";
+  const value = String(rawValue).trim();
+
+  switch (value) {
+    case "true":
+    case "1":
+    case "有":
+    case "是":
+      return "yes";
+    case "false":
+    case "0":
+    case "无":
+    case "否":
+      return "no";
+    default:
+      return value;
+  }
+}
+
+function normalizeDiaperRecord(record) {
+  return {
+    ...record,
+    poopShapeId: normalizePoopShapeId(record.poopShapeId || record.poopShape || record.shapeId),
+    diaperRash: normalizeDiaperRashId(
+      record.diaperRash !== undefined
+        ? record.diaperRash
+        : record.rash !== undefined
+          ? record.rash
+          : record.hasRash
+    ),
+  };
+}
+
 function buildMemberView(member, openId) {
   return {
     id: member.id,
@@ -282,7 +364,7 @@ async function getRecordsByBabyId(babyId) {
     .limit(300)
     .get();
 
-  return result.data.map(mapDocument);
+  return result.data.map((record) => normalizeDiaperRecord(mapDocument(record)));
 }
 
 async function buildDashboard(openId) {
@@ -458,7 +540,11 @@ async function clearRecordsByBabyId(babyId) {
 
 async function handleClearAllRecords(openId) {
   const activeBabyId = await ensureActiveBabyId(openId);
-  await ensureMembership(openId, activeBabyId);
+  const currentMember = await ensureMembership(openId, activeBabyId);
+
+  if (currentMember.role !== "owner") {
+    throw new Error("只有管理员可以清空记录");
+  }
 
   await clearRecordsByBabyId(activeBabyId);
   return buildDashboard(openId);

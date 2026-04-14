@@ -261,6 +261,8 @@ Page({
     storageMeta: createDefaultStorageMeta(),
     manageStats: [],
     canLeaveBaby: false,
+    canClearRecords: false,
+    recordCount: 0,
   },
 
   onLoad(options) {
@@ -318,6 +320,7 @@ Page({
     const storageMeta = state.storageMeta || createDefaultStorageMeta();
     const currentUserRole = state.currentUserRole || "owner";
     const canManageMembers = Boolean(state.canManageMembers);
+    const records = state.records || [];
     const ageInfo = getAgeInfo(babyProfile.birthDate);
 
     this.setData({
@@ -340,6 +343,8 @@ Page({
       storageMeta,
       manageStats: buildManageStats(ageInfo, members, currentUserRole, storageMeta),
       canLeaveBaby: currentUserRole !== "owner",
+      canClearRecords: currentUserRole === "owner",
+      recordCount: records.length,
     });
   },
 
@@ -531,6 +536,77 @@ Page({
     } catch (error) {
       wx.showToast({
         title: error.message || "退出失败",
+        icon: "none",
+      });
+    } finally {
+      wx.hideLoading();
+    }
+  },
+
+  async handleClearAllRecords() {
+    if (this.data.currentUserRole !== "owner") {
+      wx.showToast({
+        title: "只有管理员可以清空记录",
+        icon: "none",
+      });
+      return;
+    }
+
+    const recordCount = this.data.recordCount;
+
+    if (!recordCount) {
+      wx.showToast({
+        title: "暂无可清空记录",
+        icon: "none",
+      });
+      return;
+    }
+
+    const firstConfirmed = await confirmAction({
+      title: "清空全部记录",
+      content: "将清空当前宝宝的全部记录，是否继续？",
+      confirmText: "继续",
+    });
+
+    if (!firstConfirmed) {
+      return;
+    }
+
+    const secondConfirmed = await confirmAction({
+      title: "再次确认",
+      content: "清空后无法恢复，请再次确认。",
+      confirmText: "继续清空",
+    });
+
+    if (!secondConfirmed) {
+      return;
+    }
+
+    const finalConfirmed = await confirmAction({
+      title: "最终确认",
+      content: `当前共有 ${recordCount} 条记录，确认立即删除？`,
+      confirmText: "确认删除",
+    });
+
+    if (!finalConfirmed) {
+      return;
+    }
+
+    wx.showLoading({
+      title: "清空中",
+      mask: true,
+    });
+
+    try {
+      const state = await babyService.clearAllRecords();
+      this.applyState(state);
+      wx.showToast({
+        title: "已清空",
+        icon: "success",
+      });
+    } catch (error) {
+      wx.showToast({
+        title: error.message || "清空失败",
         icon: "none",
       });
     } finally {

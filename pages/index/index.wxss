@@ -787,6 +787,23 @@
   margin-top: 22rpx;
 }
 
+.danger-manage-card {
+  border-color: rgba(255, 228, 220, 0.98);
+  background: linear-gradient(180deg, rgba(255, 248, 245, 0.98) 0%, rgba(255, 240, 235, 0.95) 100%);
+}
+
+.danger-action-btn {
+  margin-top: 22rpx;
+  border-color: rgba(255, 217, 206, 0.98);
+  background: linear-gradient(180deg, rgba(255, 245, 241, 0.98) 0%, rgba(255, 233, 225, 0.96) 100%);
+  color: #cf5f36;
+}
+
+.danger-action-btn[disabled] {
+  background: linear-gradient(180deg, rgba(245, 246, 249, 0.98) 0%, rgba(239, 242, 246, 0.96) 100%);
+  color: #a1acbc;
+}
+
 .member-list {
   margin-top: 8rpx;
 }
@@ -886,6 +903,47 @@
   color: #8391a2;
 }
 
+.records-head-side {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.record-filter-trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64rpx;
+  height: 64rpx;
+  border: 1rpx solid rgba(236, 224, 218, 0.96);
+  border-radius: 999rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 244, 241, 0.95) 100%);
+  box-shadow: 0 10rpx 22rpx rgba(226, 208, 200, 0.12);
+}
+
+.record-filter-trigger-active {
+  border-color: rgba(255, 194, 170, 0.92);
+  background: linear-gradient(180deg, rgba(255, 245, 239, 0.99) 0%, rgba(255, 236, 229, 0.97) 100%);
+  box-shadow: 0 12rpx 24rpx rgba(236, 181, 160, 0.16);
+}
+
+.record-filter-trigger-icon {
+  width: 30rpx;
+  height: 30rpx;
+}
+
+.record-filter-trigger-dot {
+  position: absolute;
+  top: 10rpx;
+  right: 10rpx;
+  width: 14rpx;
+  height: 14rpx;
+  border: 3rpx solid #fff7f2;
+  border-radius: 50%;
+  background: #ef835b;
+}
+
 .record-filter-box {
   margin-bottom: 24rpx;
   padding: 26rpx;
@@ -895,50 +953,50 @@
   box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.92), 0 12rpx 26rpx rgba(227, 208, 197, 0.12);
 }
 
-.record-filter-toggle {
+.record-filter-box-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20rpx;
 }
 
-.record-filter-toggle-main,
-.record-filter-toggle-side {
+.record-filter-box-main,
+.record-filter-box-side {
   min-width: 0;
 }
 
-.record-filter-toggle-main {
+.record-filter-box-main {
   flex: 1;
 }
 
-.record-filter-toggle-side {
+.record-filter-box-side {
   display: flex;
   align-items: center;
   flex-shrink: 0;
   gap: 12rpx;
 }
 
-.record-filter-toggle-title,
-.record-filter-toggle-desc,
-.record-filter-toggle-tag,
-.record-filter-toggle-action {
+.record-filter-box-title,
+.record-filter-box-desc,
+.record-filter-box-tag,
+.record-filter-box-action {
   display: block;
 }
 
-.record-filter-toggle-title {
+.record-filter-box-title {
   margin-bottom: 8rpx;
   font-size: 28rpx;
   font-weight: 700;
   color: #344052;
 }
 
-.record-filter-toggle-desc {
+.record-filter-box-desc {
   font-size: 24rpx;
   line-height: 1.6;
   color: #8391a2;
 }
 
-.record-filter-toggle-tag {
+.record-filter-box-tag {
   min-height: 42rpx;
   padding: 0 16rpx;
   border-radius: 999rpx;
@@ -949,16 +1007,10 @@
   line-height: 42rpx;
 }
 
-.record-filter-toggle-action {
+.record-filter-box-action {
   font-size: 24rpx;
   font-weight: 700;
   color: #667486;
-}
-
-.record-filter-collapsed-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 18rpx;
 }
 
 .record-filter-content {
@@ -1011,6 +1063,69 @@
   color: #8794a6;
 }
 
+.record-group {
+  margin-bottom: 28rpx;
+}
+
+.record-group:last-child {
+  margin-bottom: 0;
+}
+
+.record-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  margin-bottom: 14rpx;
+  padding: 0 8rpx;
+}
+
+.record-group-main,
+.record-group-stats {
+  min-width: 0;
+}
+
+.record-group-main {
+  flex: 1;
+}
+
+.record-group-date,
+.record-group-raw-date,
+.record-group-stat {
+  display: block;
+}
+
+.record-group-date {
+  margin-bottom: 4rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #334052;
+}
+
+.record-group-raw-date {
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: #98a5b6;
+}
+
+.record-group-stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10rpx;
+}
+
+.record-group-stat {
+  padding: 10rpx 16rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(180deg, rgba(255, 248, 242, 0.98) 0%, rgba(248, 250, 255, 0.96) 100%);
+  box-shadow: 0 8rpx 18rpx rgba(227, 208, 197, 0.12);
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #6f7f91;
+}
+
 .record-card {
   margin-bottom: 14rpx;
   padding: 22rpx 24rpx;
@@ -1018,6 +1133,10 @@
   border-radius: 28rpx;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(250, 247, 244, 0.95) 100%);
   box-shadow: 0 14rpx 28rpx rgba(229, 205, 193, 0.16);
+}
+
+.record-group .record-card:last-child {
+  margin-bottom: 0;
 }
 
 .record-top {
