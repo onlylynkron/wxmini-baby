@@ -2,7 +2,7 @@
   <view class="hero-card">
     <view class="hero-text">
       <text class="hero-title">{{babyProfile.name || '我的宝宝'}}</text>
-      <text class="hero-desc">{{ageDetailText}}</text>
+      <text class="hero-desc">{{ageHeroText}}</text>
     </view>
 
     <view class="hero-stats">
@@ -20,9 +20,9 @@
       >
         <view class="latest-status-head">
           <text class="latest-status-label">{{item.label}}</text>
-        </view>
-        <view wx:if="{{item.badgeText}}" class="latest-status-badge {{item.badgeClass}}">
-          <text class="latest-status-badge-text">{{item.badgeText}}</text>
+          <view wx:if="{{item.badgeText}}" class="latest-status-badge {{item.badgeClass}}">
+            <text class="latest-status-badge-text">{{item.badgeText}}</text>
+          </view>
         </view>
         <text class="latest-status-time">{{item.timeText}}</text>
         <text wx:if="{{item.detailText}}" class="latest-status-detail">{{item.detailText}}</text>
@@ -99,26 +99,26 @@
         </view>
         <view class="field-row">
           <view class="field">
-            <text class="field-label">奶量（ml）</text>
+            <text class="field-label">{{form.method === '母乳' ? '时间（分钟）' : '奶量（ml）'}}</text>
             <input
               class="input-field"
               type="number"
-              placeholder="例如 120"
+              placeholder="{{form.method === '母乳' ? '例如 15' : '例如 120'}}"
               value="{{form.amount}}"
               bindinput="handleAmountInput"
             />
           </view>
           <view class="field">
-            <text class="field-label">常用奶量</text>
+            <text class="field-label">{{form.method === '母乳' ? '常用时长' : '常用奶量'}}</text>
             <picker
               mode="selector"
-              range="{{amountOptions}}"
+              range="{{form.method === '母乳' ? durationOptions : amountOptions}}"
               range-key="label"
               value="{{amountPickerIndex}}"
               bindchange="handleAmountOptionChange"
             >
               <view class="picker-field {{form.amount ? '' : 'picker-placeholder'}}">
-                {{form.amount ? form.amount + ' ml' : '选择常用奶量'}}
+                {{form.amount ? form.amount + (form.method === '母乳' ? ' 分钟' : ' ml') : (form.method === '母乳' ? '选择常用时长' : '选择常用奶量')}}
               </view>
             </picker>
           </view>
@@ -126,8 +126,10 @@
       </block>
 
       <block wx:if="{{form.type === 'diaper'}}">
+        <text class="helper-text diaper-helper-text">以下项目都可选，不填也可以；再次点击已选项可取消。</text>
+
         <view class="field">
-          <text class="field-label">尿布情况</text>
+          <text class="field-label">尿布状态（可选）</text>
           <scroll-view scroll-x class="scroll-select">
             <view class="scroll-track">
               <view
@@ -143,8 +145,8 @@
           </scroll-view>
         </view>
 
-        <view wx:if="{{form.diaperType === '便便' || form.diaperType === '混合'}}" class="field">
-          <text class="field-label">便便颜色</text>
+        <view class="field">
+          <text class="field-label">便便颜色（可选）</text>
           <view class="poop-grid">
             <view
               wx:for="{{poopColors}}"
@@ -157,6 +159,73 @@
               <text class="poop-name">{{item.label}}</text>
             </view>
           </view>
+        </view>
+
+        <view class="field">
+          <text class="field-label">便便形状（可选）</text>
+          <scroll-view scroll-x class="scroll-select">
+            <view class="scroll-track">
+              <view
+                wx:for="{{poopShapes}}"
+                wx:key="id"
+                class="pill-option pill-option-shape {{form.poopShapeId === item.id ? 'pill-option-active' : ''}}"
+                data-shape-id="{{item.id}}"
+                bindtap="handlePoopShapeChange"
+              >
+                {{item.label}}
+              </view>
+            </view>
+          </scroll-view>
+        </view>
+
+        <view class="field">
+          <text class="field-label">红屁屁（可选）</text>
+          <view class="field-row diaper-rash-row">
+            <view
+              wx:for="{{diaperRashOptions}}"
+              wx:key="id"
+              class="pill-option diaper-rash-option {{form.diaperRash === item.id ? 'pill-option-active' : ''}}"
+              data-rash-id="{{item.id}}"
+              bindtap="handleDiaperRashChange"
+            >
+              {{item.label}}
+            </view>
+          </view>
+        </view>
+      </block>
+
+      <block wx:if="{{form.type === 'growth'}}">
+        <view class="field-row">
+          <view class="field">
+            <text class="field-label">身高（cm）</text>
+            <input
+              class="input-field"
+              type="digit"
+              placeholder="例如 65"
+              value="{{form.height}}"
+              bindinput="handleHeightInput"
+            />
+          </view>
+          <view class="field">
+            <text class="field-label">体重（kg）</text>
+            <input
+              class="input-field"
+              type="digit"
+              placeholder="例如 6.8"
+              value="{{form.weight}}"
+              bindinput="handleWeightInput"
+            />
+          </view>
+        </view>
+        <view class="field">
+          <text class="field-label">头围（cm）</text>
+          <input
+            class="input-field"
+            type="digit"
+            placeholder="例如 41"
+            value="{{form.headCircumference}}"
+            bindinput="handleHeadCircumferenceInput"
+          />
         </view>
       </block>
 
@@ -255,41 +324,6 @@
               </view>
             </view>
           </scroll-view>
-        </view>
-      </block>
-
-      <block wx:if="{{form.type === 'growth'}}">
-        <view class="field-row">
-          <view class="field">
-            <text class="field-label">身高（cm）</text>
-            <input
-              class="input-field"
-              type="digit"
-              placeholder="例如 65"
-              value="{{form.height}}"
-              bindinput="handleHeightInput"
-            />
-          </view>
-          <view class="field">
-            <text class="field-label">体重（kg）</text>
-            <input
-              class="input-field"
-              type="digit"
-              placeholder="例如 6.8"
-              value="{{form.weight}}"
-              bindinput="handleWeightInput"
-            />
-          </view>
-        </view>
-        <view class="field">
-          <text class="field-label">头围（cm）</text>
-          <input
-            class="input-field"
-            type="digit"
-            placeholder="例如 41"
-            value="{{form.headCircumference}}"
-            bindinput="handleHeadCircumferenceInput"
-          />
         </view>
       </block>
 
@@ -400,21 +434,35 @@
 
     <view wx:for="{{records}}" wx:key="id" class="record-card">
       <view class="record-top">
-        <view class="record-badge {{item.badgeClass}}">{{item.typeLabel}}</view>
-        <text class="record-time">{{item.displayTime}}</text>
+        <view class="record-meta">
+          <view class="record-badge {{item.badgeClass}}">{{item.typeLabel}}</view>
+          <text class="record-time">{{item.displayTime}}</text>
+        </view>
       </view>
-      <view class="record-main">
-        <text class="record-title">{{item.title}}</text>
-        <text wx:if="{{item.subtitle}}" class="record-subtitle">{{item.subtitle}}</text>
-        <text wx:if="{{item.note}}" class="record-note">备注：{{item.note}}</text>
-      </view>
-      <view class="record-actions">
-        <button class="ghost-btn ghost-edit-btn" size="mini" data-id="{{item.id}}" bindtap="handleEdit">
-          编辑
-        </button>
-        <button class="ghost-btn ghost-delete-btn" size="mini" data-id="{{item.id}}" bindtap="handleDelete">
-          删除
-        </button>
+
+      <view class="record-body">
+        <view class="record-main">
+          <text class="record-title">{{item.title}}</text>
+          <text wx:if="{{item.subtitle}}" class="record-subtitle">{{item.subtitle}}</text>
+          <text wx:if="{{item.note}}" class="record-note">备注：{{item.note}}</text>
+        </view>
+
+        <view class="record-actions">
+          <view
+            class="record-icon-btn record-icon-edit"
+            data-id="{{item.id}}"
+            bindtap="handleEdit"
+          >
+            <image class="record-action-icon" src="/assets/icons/edit.svg" mode="aspectFit" />
+          </view>
+          <view
+            class="record-icon-btn record-icon-delete"
+            data-id="{{item.id}}"
+            bindtap="handleDelete"
+          >
+            <image class="record-action-icon" src="/assets/icons/delete.svg" mode="aspectFit" />
+          </view>
+        </view>
       </view>
     </view>
   </view>

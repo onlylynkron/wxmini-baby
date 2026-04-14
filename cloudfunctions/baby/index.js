@@ -168,6 +168,8 @@ async function migrateLegacyRecords(openId, babyId) {
           amount: record.amount !== undefined ? record.amount : null,
           diaperType: record.diaperType || "",
           poopColorId: record.poopColorId || "",
+          poopShapeId: record.poopShapeId || "",
+          diaperRash: record.diaperRash || "",
           sleepType: record.sleepType || "",
           durationMinutes: record.durationMinutes !== undefined ? record.durationMinutes : null,
           medicineName: record.medicineName || "",
@@ -322,6 +324,8 @@ function buildRecordPayload(record, babyId) {
     amount: record.amount !== undefined && record.amount !== "" ? Number(record.amount) : null,
     diaperType: record.diaperType || "",
     poopColorId: record.poopColorId || "",
+    poopShapeId: record.poopShapeId || "",
+    diaperRash: record.diaperRash || "",
     sleepType: record.sleepType || "",
     durationMinutes:
       record.durationMinutes !== undefined && record.durationMinutes !== ""

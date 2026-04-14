@@ -3,14 +3,14 @@ const babyService = require("../../utils/baby-service");
 const RECORD_TYPES = [
   { id: "feeding", label: "喝奶" },
   { id: "diaper", label: "尿布" },
+  { id: "growth", label: "成长" },
   { id: "sleep", label: "睡眠" },
   { id: "medicine", label: "喂药" },
   { id: "temperature", label: "体温" },
-  { id: "growth", label: "成长" },
 ];
 const RECORD_FILTER_OPTIONS = [{ id: "all", label: "全部" }, ...RECORD_TYPES];
 
-const FEEDING_METHODS = ["配方奶", "母乳", "混合喂养", "其他"];
+const FEEDING_METHODS = ["配方奶", "母乳", "瓶装奶", "其他"];
 const FEEDING_AMOUNT_OPTIONS = [
   { label: "30 ml", value: "30" },
   { label: "60 ml", value: "60" },
@@ -21,7 +21,28 @@ const FEEDING_AMOUNT_OPTIONS = [
   { label: "210 ml", value: "210" },
   { label: "240 ml", value: "240" },
 ];
+const FEEDING_DURATION_OPTIONS = [
+  { label: "5 分钟", value: "5" },
+  { label: "10 分钟", value: "10" },
+  { label: "15 分钟", value: "15" },
+  { label: "20 分钟", value: "20" },
+  { label: "30 分钟", value: "30" },
+  { label: "40 分钟", value: "40" },
+  { label: "60 分钟", value: "60" },
+];
 const DIAPER_TYPES = ["尿尿", "便便", "混合"];
+const POOP_SHAPES = [
+  { id: "paste", label: "糊状" },
+  { id: "dry", label: "干糊" },
+  { id: "cream", label: "膏状" },
+  { id: "curd", label: "奶瓣" },
+  { id: "watery", label: "稀水样" },
+  { id: "foamy", label: "泡沫状" },
+];
+const DIAPER_RASH_OPTIONS = [
+  { id: "yes", label: "是" },
+  { id: "no", label: "否" },
+];
 const SLEEP_TYPES = ["白天小睡", "夜间睡眠"];
 const MEDICINE_UNITS = ["ml", "滴", "粒", "包", "次"];
 const TEMPERATURE_METHODS = ["腋温", "耳温", "额温"];
@@ -36,13 +57,23 @@ const LATEST_STATUS_ALERT_THRESHOLD = 4 * 60 * 60 * 1000;
 const POOP_COLORS = [
   { id: "golden", label: "金黄", image: "/assets/poop-colors/golden.png" },
   { id: "yellow", label: "浅黄", image: "/assets/poop-colors/yellow.png" },
+  { id: "red", label: "黄绿色", image: "/assets/poop-colors/red.png" },
   { id: "green", label: "绿色", image: "/assets/poop-colors/green.png" },
   { id: "brown", label: "棕色", image: "/assets/poop-colors/brown.png" },
   { id: "black", label: "黑色", image: "/assets/poop-colors/black.png" },
-  { id: "red", label: "偏红", image: "/assets/poop-colors/red.png" },
 ];
 
 const POOP_COLOR_MAP = POOP_COLORS.reduce((result, item) => {
+  result[item.id] = item;
+  return result;
+}, {});
+
+const POOP_SHAPE_MAP = POOP_SHAPES.reduce((result, item) => {
+  result[item.id] = item;
+  return result;
+}, {});
+
+const DIAPER_RASH_MAP = DIAPER_RASH_OPTIONS.reduce((result, item) => {
   result[item.id] = item;
   return result;
 }, {});
@@ -165,26 +196,44 @@ function saveRecordFilterCollapseState(babyId, collapsed) {
   wx.setStorageSync(RECORD_FILTER_COLLAPSE_STORAGE_KEY, state);
 }
 
+function normalizeFeedingMethod(method) {
+  const value = String(method || "").trim();
+
+  if (value === "混合喂养") {
+    return "瓶装奶";
+  }
+
+  return FEEDING_METHODS.includes(value) ? value : FEEDING_METHODS[0];
+}
+
+function isBreastfeedingMethod(method) {
+  return normalizeFeedingMethod(method) === "母乳";
+}
+
 function getPreferredFeedingMethod() {
-  const preferredMethod = wx.getStorageSync(PREFERRED_FEEDING_METHOD_KEY);
-  return FEEDING_METHODS.includes(preferredMethod)
-    ? preferredMethod
-    : FEEDING_METHODS[0];
+  return normalizeFeedingMethod(wx.getStorageSync(PREFERRED_FEEDING_METHOD_KEY));
 }
 
 function savePreferredFeedingMethod(method) {
-  if (!FEEDING_METHODS.includes(method)) {
+  const normalizedMethod = normalizeFeedingMethod(method);
+
+  if (!FEEDING_METHODS.includes(normalizedMethod)) {
     return;
   }
 
-  wx.setStorageSync(PREFERRED_FEEDING_METHOD_KEY, method);
+  wx.setStorageSync(PREFERRED_FEEDING_METHOD_KEY, normalizedMethod);
 }
 
-function getAmountPickerIndex(amount) {
-  const value = String(amount || "");
-  const index = FEEDING_AMOUNT_OPTIONS.findIndex((item) => item.value === value);
+function getFeedingQuickOptions(method) {
+  return isBreastfeedingMethod(method) ? FEEDING_DURATION_OPTIONS : FEEDING_AMOUNT_OPTIONS;
+}
 
-  return index >= 0 ? index : 3;
+function getAmountPickerIndex(amount, method) {
+  const value = String(amount || "");
+  const options = getFeedingQuickOptions(method);
+  const index = options.findIndex((item) => item.value === value);
+
+  return index >= 0 ? index : isBreastfeedingMethod(method) ? 2 : 3;
 }
 
 function createDefaultProfile() {
@@ -203,10 +252,12 @@ function createDefaultForm() {
     date: formatDate(now),
     time: formatTime(now),
     note: "",
-    method: getPreferredFeedingMethod(),
+    method: normalizeFeedingMethod(getPreferredFeedingMethod()),
     amount: "",
-    diaperType: DIAPER_TYPES[0],
-    poopColorId: POOP_COLORS[0].id,
+    diaperType: "",
+    poopColorId: "",
+    poopShapeId: "",
+    diaperRash: "",
     sleepType: SLEEP_TYPES[0],
     durationMinutes: "",
     medicineName: "",
@@ -265,11 +316,17 @@ function createLatestStatusCards() {
   ];
 }
 
+function formatFeedingMetric(value, method) {
+  return formatMetric(value, isBreastfeedingMethod(method) ? " 分钟" : " ml");
+}
+
 function getAgeInfo(birthDate) {
   if (!birthDate) {
     return {
       shortText: "未设置",
-      detailText: "设置出生日期后会自动计算天数、周数和周岁。",
+      detailText: "设置出生日期后会自动计算月龄和周岁。",
+      heroText: "设置出生日期后会自动计算总天数和月龄。",
+      monthDayText: "",
       days: 0,
     };
   }
@@ -282,18 +339,20 @@ function getAgeInfo(birthDate) {
     return {
       shortText: "日期无效",
       detailText: "出生日期不能晚于今天。",
+      heroText: "出生日期不能晚于今天。",
+      monthDayText: "",
       days: 0,
     };
   }
 
-  const diffDays = Math.floor((current.getTime() - birth.getTime()) / 86400000) + 1;
-  const totalWeeks = Math.floor(diffDays / 7);
-  const remainDays = diffDays % 7;
+  const diffDays = Math.floor((current.getTime() - birth.getTime()) / 86400000);
   let years = current.getFullYear() - birth.getFullYear();
   let months = current.getMonth() - birth.getMonth();
+  let days = current.getDate() - birth.getDate();
 
-  if (current.getDate() < birth.getDate()) {
+  if (days < 0) {
     months -= 1;
+    days += new Date(current.getFullYear(), current.getMonth(), 0).getDate();
   }
 
   if (months < 0) {
@@ -301,11 +360,15 @@ function getAgeInfo(birthDate) {
     months += 12;
   }
 
-  const shortText = years > 0 ? `${years}岁${months}个月` : `${diffDays}天`;
+  const totalMonths = years * 12 + months;
+  const monthAgeText = `${Math.max(totalMonths, 0)}月${Math.max(days, 0)}天`;
+  const shortText = years > 0 ? `${years}岁${months}个月` : monthAgeText;
   return {
     shortText,
-    detailText: `${diffDays}天 · ${totalWeeks}周${remainDays}天`,
-    days: diffDays,
+    detailText: years > 0 ? `${years}岁${months}个月${days}天` : monthAgeText,
+    heroText: `${Math.max(diffDays, 0)}天 · ${monthAgeText}`,
+    monthDayText: monthAgeText,
+    days: Math.max(diffDays, 0),
   };
 }
 
@@ -507,11 +570,29 @@ function buildDiaperDetailText(record) {
     return "";
   }
 
-  const parts = [record.diaperType || "尿布记录"];
+  const parts = [];
   const poopColor = POOP_COLOR_MAP[record.poopColorId];
+  const poopShape = POOP_SHAPE_MAP[record.poopShapeId];
+  const diaperRash = DIAPER_RASH_MAP[record.diaperRash];
 
-  if (poopColor && (record.diaperType === "便便" || record.diaperType === "混合")) {
+  if (record.diaperType) {
+    parts.push(record.diaperType);
+  }
+
+  if (poopColor) {
     parts.push(poopColor.label);
+  }
+
+  if (poopShape) {
+    parts.push(poopShape.label);
+  }
+
+  if (diaperRash) {
+    parts.push(`红屁屁：${diaperRash.label}`);
+  }
+
+  if (!parts.length) {
+    return "尿布记录";
   }
 
   return parts.join(" · ");
@@ -625,7 +706,12 @@ function buildLatestStatusCards(records) {
     buildLatestStatusCard(
       "最后喝奶",
       feedingRecord,
-      feedingRecord ? `${feedingRecord.method} · ${formatMetric(feedingRecord.amount, " ml")}` : "",
+      feedingRecord
+        ? `${normalizeFeedingMethod(feedingRecord.method)} · ${formatFeedingMetric(
+            feedingRecord.amount,
+            feedingRecord.method
+          )}`
+        : "",
       "还没有喝奶记录",
       "latest-status-feeding"
     ),
@@ -673,10 +759,10 @@ function buildFilterStats(summary) {
   return [
     { label: "喝奶", value: `${summary.feedingCount} 次` },
     { label: "尿布", value: `${summary.diaperCount} 次` },
+    { label: "成长", value: `${summary.growthCount} 次` },
     { label: "睡眠", value: `${summary.sleepMinutes} 分钟` },
     { label: "喂药", value: `${summary.medicineCount} 次` },
     { label: "体温", value: `${summary.temperatureCount} 次` },
-    { label: "成长", value: `${summary.growthCount} 次` },
   ];
 }
 
@@ -691,7 +777,9 @@ function getSummary(records, targetDate) {
     switch (record.type) {
       case "feeding":
         summary.feedingCount += 1;
-        summary.totalAmount += Number(record.amount || 0);
+        if (!isBreastfeedingMethod(record.method)) {
+          summary.totalAmount += Number(record.amount || 0);
+        }
         break;
       case "diaper":
         summary.diaperCount += 1;
@@ -771,10 +859,12 @@ function buildFormFromRecord(record) {
     date: record.date,
     time: record.time,
     note: record.note || "",
-    method: record.method || getPreferredFeedingMethod(),
+    method: normalizeFeedingMethod(record.method || getPreferredFeedingMethod()),
     amount: record.amount !== undefined && record.amount !== null ? String(record.amount) : "",
-    diaperType: record.diaperType || DIAPER_TYPES[0],
-    poopColorId: record.poopColorId || POOP_COLORS[0].id,
+    diaperType: record.diaperType || "",
+    poopColorId: record.poopColorId || "",
+    poopShapeId: record.poopShapeId || "",
+    diaperRash: record.diaperRash || "",
     sleepType: record.sleepType || SLEEP_TYPES[0],
     durationMinutes:
       record.durationMinutes !== undefined && record.durationMinutes !== null
@@ -809,21 +899,15 @@ function buildRecordView(record) {
         ...baseRecord,
         typeLabel: "喝奶",
         badgeClass: "record-badge-feeding",
-        title: `${record.method} · ${formatMetric(record.amount, " ml")}`,
+        title: `${normalizeFeedingMethod(record.method)} · ${formatFeedingMetric(record.amount, record.method)}`,
         subtitle: "喂养记录",
       };
     case "diaper": {
-      const poopColor = POOP_COLOR_MAP[record.poopColorId];
-      const details = [`尿布情况：${record.diaperType}`];
-      if (poopColor && (record.diaperType === "便便" || record.diaperType === "混合")) {
-        details.push(`便便颜色：${poopColor.label}`);
-      }
-
       return {
         ...baseRecord,
         typeLabel: "尿布",
         badgeClass: "record-badge-diaper",
-        title: details.join(" · "),
+        title: buildDiaperDetailText(record),
         subtitle: "排泄记录",
       };
     }
@@ -892,13 +976,21 @@ function buildEditingSummary(record) {
   return `${typeMeta.label} · ${formatLatestRecordTime(record)}`;
 }
 
+function getMillisecondsUntilNextMinute() {
+  const remainder = Date.now() % 60000;
+  return remainder === 0 ? 60000 : 60000 - remainder;
+}
+
 Page({
   data: {
     recordTypes: RECORD_TYPES,
     recordFilterOptions: RECORD_FILTER_OPTIONS,
     feedingMethods: FEEDING_METHODS,
     amountOptions: FEEDING_AMOUNT_OPTIONS,
+    durationOptions: FEEDING_DURATION_OPTIONS,
     diaperTypes: DIAPER_TYPES,
+    poopShapes: POOP_SHAPES,
+    diaperRashOptions: DIAPER_RASH_OPTIONS,
     sleepTypes: SLEEP_TYPES,
     medicineUnits: MEDICINE_UNITS,
     temperatureMethods: TEMPERATURE_METHODS,
@@ -930,11 +1022,14 @@ Page({
     listNote: "0 条",
     emptyTitle: "还没有记录",
     emptyDesc: "先添加一条宝宝记录。",
-    amountPickerIndex: getAmountPickerIndex(""),
+    amountPickerIndex: getAmountPickerIndex("", getPreferredFeedingMethod()),
     editingId: "",
     editingSummaryText: "",
+    shouldAutoSyncFormDate: true,
+    shouldAutoSyncFormTime: true,
     ageShortText: "未设置",
-    ageDetailText: "设置出生日期后会自动计算天数、周数和周岁。",
+    ageDetailText: "设置出生日期后会自动计算月龄和周岁。",
+    ageHeroText: "设置出生日期后会自动计算总天数和月龄。",
     memberSummaryText: "1位成员",
     currentUserRole: "owner",
     canManageMembers: false,
@@ -991,21 +1086,26 @@ Page({
     this.setData({
       editingId: "",
       editingSummaryText: "",
+      shouldAutoSyncFormDate: true,
+      shouldAutoSyncFormTime: true,
       form: createDefaultForm(),
-      amountPickerIndex: getAmountPickerIndex(""),
+      amountPickerIndex: getAmountPickerIndex("", getPreferredFeedingMethod()),
     });
   },
 
   startLatestStatusTicker() {
     this.stopLatestStatusTicker();
-    this.latestStatusTimer = setInterval(() => {
-      this.refreshLatestStatus(this.data.allRecords);
-    }, 60000);
+    const tick = () => {
+      this.refreshRealtimeContent();
+      this.latestStatusTimer = setTimeout(tick, getMillisecondsUntilNextMinute());
+    };
+
+    tick();
   },
 
   stopLatestStatusTicker() {
     if (this.latestStatusTimer) {
-      clearInterval(this.latestStatusTimer);
+      clearTimeout(this.latestStatusTimer);
       this.latestStatusTimer = null;
     }
   },
@@ -1061,6 +1161,7 @@ Page({
       heroStats,
       ageShortText: ageInfo.shortText,
       ageDetailText: ageInfo.detailText,
+      ageHeroText: ageInfo.heroText,
       memberSummaryText: buildMemberSummary(members),
       currentUserRole,
       canManageMembers,
@@ -1174,6 +1275,44 @@ Page({
     });
   },
 
+  refreshRealtimeContent() {
+    const allRecords = this.data.allRecords || [];
+    const now = new Date();
+    const nextDate = formatDate(now);
+    const nextTime = formatTime(now);
+    const nextForm = this.data.editingId
+      ? null
+      : {
+          ...this.data.form,
+          date: this.data.shouldAutoSyncFormDate ? nextDate : this.data.form.date,
+          time: this.data.shouldAutoSyncFormTime ? nextTime : this.data.form.time,
+        };
+    const todayDate = nextDate;
+    const ageInfo = getAgeInfo(this.data.babyProfile.birthDate);
+    const todaySummary = getSummary(allRecords, todayDate);
+    const heroStats = buildHeroStats(ageInfo, this.data.members || [], todaySummary);
+    const editingRecord = this.data.editingId
+      ? allRecords.find((item) => item.id === this.data.editingId)
+      : null;
+
+    this.setData(
+      {
+        todayDate,
+        todaySummary,
+        heroStats,
+        ageShortText: ageInfo.shortText,
+        ageDetailText: ageInfo.detailText,
+        ageHeroText: ageInfo.heroText,
+        form: nextForm || this.data.form,
+        editingSummaryText: editingRecord ? buildEditingSummary(editingRecord) : this.data.editingSummaryText,
+      },
+      () => {
+        this.refreshView(allRecords);
+        this.refreshLatestStatus(allRecords);
+      }
+    );
+  },
+
   handleProfileNameInput(event) {
     this.setData({
       "profileForm.name": event.detail.value,
@@ -1252,11 +1391,8 @@ Page({
 
     if (type === "feeding" && !nextForm.method) {
       nextForm.method = getPreferredFeedingMethod();
-    }
-
-    if (type === "diaper" && !nextForm.diaperType) {
-      nextForm.diaperType = DIAPER_TYPES[0];
-      nextForm.poopColorId = POOP_COLORS[0].id;
+    } else if (type === "feeding") {
+      nextForm.method = normalizeFeedingMethod(nextForm.method);
     }
 
     if (type === "sleep" && !nextForm.sleepType) {
@@ -1279,12 +1415,14 @@ Page({
   handleDateChange(event) {
     this.setData({
       "form.date": event.detail.value,
+      shouldAutoSyncFormDate: Boolean(this.data.editingId),
     });
   },
 
   handleTimeChange(event) {
     this.setData({
       "form.time": event.detail.value,
+      shouldAutoSyncFormTime: Boolean(this.data.editingId),
     });
   },
 
@@ -1295,10 +1433,18 @@ Page({
   },
 
   handleFeedingMethodChange(event) {
-    const { method } = event.currentTarget.dataset;
+    const method = normalizeFeedingMethod(event.currentTarget.dataset.method);
+    const currentMethod = this.data.form.method;
+    const nextAmount =
+      isBreastfeedingMethod(currentMethod) === isBreastfeedingMethod(method)
+        ? this.data.form.amount
+        : "";
+
     savePreferredFeedingMethod(method);
     this.setData({
       "form.method": method,
+      "form.amount": nextAmount,
+      amountPickerIndex: getAmountPickerIndex(nextAmount, method),
     });
   },
 
@@ -1306,13 +1452,14 @@ Page({
     const amount = sanitizeInteger(event.detail.value);
     this.setData({
       "form.amount": amount,
-      amountPickerIndex: getAmountPickerIndex(amount),
+      amountPickerIndex: getAmountPickerIndex(amount, this.data.form.method),
     });
   },
 
   handleAmountOptionChange(event) {
     const amountPickerIndex = Number(event.detail.value || 0);
-    const selectedOption = FEEDING_AMOUNT_OPTIONS[amountPickerIndex] || FEEDING_AMOUNT_OPTIONS[0];
+    const options = getFeedingQuickOptions(this.data.form.method);
+    const selectedOption = options[amountPickerIndex] || options[0];
 
     this.setData({
       "form.amount": selectedOption.value,
@@ -1322,24 +1469,29 @@ Page({
 
   handleDiaperTypeChange(event) {
     const { diaperType } = event.currentTarget.dataset;
-    const nextForm = {
-      ...this.data.form,
-      diaperType,
-    };
-
-    if ((diaperType === "便便" || diaperType === "混合") && !nextForm.poopColorId) {
-      nextForm.poopColorId = POOP_COLORS[0].id;
-    }
-
     this.setData({
-      form: nextForm,
+      "form.diaperType": this.data.form.diaperType === diaperType ? "" : diaperType,
     });
   },
 
   handlePoopColorChange(event) {
     const { colorId } = event.currentTarget.dataset;
     this.setData({
-      "form.poopColorId": colorId,
+      "form.poopColorId": this.data.form.poopColorId === colorId ? "" : colorId,
+    });
+  },
+
+  handlePoopShapeChange(event) {
+    const { shapeId } = event.currentTarget.dataset;
+    this.setData({
+      "form.poopShapeId": this.data.form.poopShapeId === shapeId ? "" : shapeId,
+    });
+  },
+
+  handleDiaperRashChange(event) {
+    const { rashId } = event.currentTarget.dataset;
+    this.setData({
+      "form.diaperRash": this.data.form.diaperRash === rashId ? "" : rashId,
     });
   },
 
@@ -1458,7 +1610,7 @@ Page({
       editingId: id,
       editingSummaryText: buildEditingSummary(record),
       form: buildFormFromRecord(record),
-      amountPickerIndex: getAmountPickerIndex(record.amount),
+      amountPickerIndex: getAmountPickerIndex(record.amount, record.method),
     });
   },
 
@@ -1478,13 +1630,10 @@ Page({
     switch (form.type) {
       case "feeding":
         if (!form.amount) {
-          return "请填写奶量";
+          return isBreastfeedingMethod(form.method) ? "请填写喂养时长" : "请填写奶量";
         }
         return "";
       case "diaper":
-        if ((form.diaperType === "便便" || form.diaperType === "混合") && !form.poopColorId) {
-          return "请选择便便颜色";
-        }
         return "";
       case "sleep":
         if (!form.durationMinutes) {
@@ -1525,15 +1674,16 @@ Page({
     };
 
     if (form.type === "feeding") {
-      record.method = form.method;
+      record.method = normalizeFeedingMethod(form.method);
       record.amount = form.amount;
-      savePreferredFeedingMethod(form.method);
+      savePreferredFeedingMethod(record.method);
     }
 
     if (form.type === "diaper") {
       record.diaperType = form.diaperType;
-      record.poopColorId =
-        form.diaperType === "便便" || form.diaperType === "混合" ? form.poopColorId : "";
+      record.poopColorId = form.poopColorId;
+      record.poopShapeId = form.poopShapeId;
+      record.diaperRash = form.diaperRash;
     }
 
     if (form.type === "sleep") {
@@ -1603,6 +1753,15 @@ Page({
 
   async handleDelete(event) {
     const { id } = event.currentTarget.dataset;
+    const confirmed = await confirmAction({
+      title: "删除记录",
+      content: "确认删除这条记录？",
+      confirmText: "确认删除",
+    });
+
+    if (!confirmed) {
+      return;
+    }
 
     wx.showLoading({
       title: "删除中",

@@ -109,7 +109,7 @@ function getAgeInfo(birthDate) {
   if (!birthDate) {
     return {
       shortText: "未设置",
-      detailText: "设置出生日期后会自动计算天数、周数和周岁。",
+      detailText: "设置出生日期后会自动计算月龄和周岁。",
     };
   }
 
@@ -124,14 +124,14 @@ function getAgeInfo(birthDate) {
     };
   }
 
-  const diffDays = Math.floor((current.getTime() - birth.getTime()) / 86400000) + 1;
-  const totalWeeks = Math.floor(diffDays / 7);
-  const remainDays = diffDays % 7;
+  const diffDays = Math.floor((current.getTime() - birth.getTime()) / 86400000);
   let years = current.getFullYear() - birth.getFullYear();
   let months = current.getMonth() - birth.getMonth();
+  let days = current.getDate() - birth.getDate();
 
-  if (current.getDate() < birth.getDate()) {
+  if (days < 0) {
     months -= 1;
+    days += new Date(current.getFullYear(), current.getMonth(), 0).getDate();
   }
 
   if (months < 0) {
@@ -139,9 +139,12 @@ function getAgeInfo(birthDate) {
     months += 12;
   }
 
+  const totalMonths = years * 12 + months;
+  const monthAgeText = `${Math.max(totalMonths, 0)}月${Math.max(days, 0)}天`;
+
   return {
-    shortText: years > 0 ? `${years}岁${months}个月` : `${diffDays}天`,
-    detailText: `${diffDays}天 · ${totalWeeks}周${remainDays}天`,
+    shortText: years > 0 ? `${years}岁${months}个月` : monthAgeText,
+    detailText: years > 0 ? `${years}岁${months}个月${days}天` : monthAgeText,
   };
 }
 
@@ -247,7 +250,7 @@ Page({
     profileCollapsed: false,
     collaborationCollapsed: false,
     ageShortText: "未设置",
-    ageDetailText: "设置出生日期后会自动计算天数、周数和周岁。",
+    ageDetailText: "设置出生日期后会自动计算月龄和周岁。",
     members: [],
     memberList: [],
     memberSummaryText: "1位成员",

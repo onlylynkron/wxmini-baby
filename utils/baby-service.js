@@ -112,8 +112,13 @@ function normalizeRecord(record, babyId) {
     ...record,
     id: record.id || record._id,
     babyId: record.babyId || babyId || "local-baby",
+    method: record.method || "",
     note: record.note || "",
     amount: record.amount !== undefined && record.amount !== null ? String(record.amount) : "",
+    diaperType: record.diaperType || "",
+    poopColorId: record.poopColorId || "",
+    poopShapeId: record.poopShapeId || "",
+    diaperRash: record.diaperRash || "",
     durationMinutes:
       record.durationMinutes !== undefined && record.durationMinutes !== null
         ? String(record.durationMinutes)

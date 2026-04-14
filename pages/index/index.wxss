@@ -167,6 +167,10 @@
 }
 
 .latest-status-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
   min-height: 40rpx;
   margin-bottom: 14rpx;
 }
@@ -179,9 +183,13 @@
 }
 
 .latest-status-label {
+  flex: 1;
+  min-width: 0;
   font-size: 24rpx;
   line-height: 40rpx;
-  padding-right: 154rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: #8391a2;
 }
 
@@ -207,13 +215,11 @@
 }
 
 .latest-status-badge {
-  position: absolute;
-  top: 24rpx;
-  right: 24rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  max-width: 144rpx;
+  flex-shrink: 0;
+  max-width: 160rpx;
   padding: 0 12rpx;
   border-radius: 999rpx;
   box-sizing: border-box;
@@ -238,8 +244,8 @@
 }
 
 .latest-status-badge-recent {
-  background: rgba(202, 214, 232, 0.3);
-  color: #5f7590;
+  background: rgba(189, 223, 201, 0.32);
+  color: #5a8b73;
 }
 
 .latest-status-badge-warning {
@@ -287,8 +293,23 @@
   color: #2f8a63;
 }
 
+.latest-status-tone-recent {
+  border-color: rgba(190, 224, 201, 0.76);
+  background: linear-gradient(180deg, rgba(248, 255, 250, 0.99) 0%, rgba(240, 250, 244, 0.97) 100%);
+  box-shadow: 0 16rpx 30rpx rgba(144, 193, 164, 0.14);
+}
+
+.latest-status-tone-recent .latest-status-label {
+  color: #7f998c;
+}
+
+.latest-status-tone-recent .latest-status-time {
+  color: #4e8067;
+}
+
+.latest-status-tone-recent .latest-status-detail,
 .latest-status-tone-recent .latest-status-relative {
-  color: #5d738e;
+  color: #6c937f;
 }
 
 .latest-status-tone-warning {
@@ -456,11 +477,13 @@
 
 .field-row {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
 }
 
 .field-row .field {
   flex: 1;
+  min-width: 0;
   margin-bottom: 0;
 }
 
@@ -521,7 +544,9 @@
 .picker-field,
 .input-field,
 .textarea-field {
+  display: block;
   width: 100%;
+  box-sizing: border-box;
   padding: 24rpx 28rpx;
   border: 1rpx solid rgba(244, 224, 215, 0.95);
   border-radius: 30rpx;
@@ -538,6 +563,8 @@
 
 .input-field {
   height: 96rpx;
+  padding: 0 28rpx;
+  line-height: 94rpx;
 }
 
 .textarea-field {
@@ -621,6 +648,12 @@
   margin-bottom: -16rpx;
 }
 
+.diaper-helper-text {
+  margin-top: -6rpx;
+  margin-bottom: 18rpx;
+  padding-left: 8rpx;
+}
+
 .poop-card {
   width: 188rpx;
   margin-right: 16rpx;
@@ -649,6 +682,20 @@
   font-size: 24rpx;
   font-weight: 600;
   color: #4f5d70;
+}
+
+.pill-option-shape {
+  min-width: 160rpx;
+}
+
+.diaper-rash-row {
+  gap: 16rpx;
+}
+
+.diaper-rash-row .diaper-rash-option {
+  min-width: 0;
+  flex: 1;
+  margin-right: 0;
 }
 
 .primary-btn,
@@ -965,10 +1012,10 @@
 }
 
 .record-card {
-  margin-bottom: 18rpx;
-  padding: 26rpx;
+  margin-bottom: 14rpx;
+  padding: 22rpx 24rpx;
   border: 1rpx solid rgba(255, 255, 255, 0.94);
-  border-radius: 30rpx;
+  border-radius: 28rpx;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(250, 247, 244, 0.95) 100%);
   box-shadow: 0 14rpx 28rpx rgba(229, 205, 193, 0.16);
 }
@@ -976,14 +1023,22 @@
 .record-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 18rpx;
+  margin-bottom: 12rpx;
+}
+
+.record-meta {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  flex: 1;
+  min-width: 0;
 }
 
 .record-badge {
-  padding: 10rpx 20rpx;
+  flex-shrink: 0;
+  padding: 8rpx 18rpx;
   border-radius: 999rpx;
-  font-size: 22rpx;
+  font-size: 21rpx;
   font-weight: 700;
 }
 
@@ -1023,12 +1078,24 @@
 }
 
 .record-time {
-  font-size: 24rpx;
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 23rpx;
+  line-height: 1.4;
+  text-align: right;
   color: #94a1b2;
 }
 
 .record-main {
-  margin-bottom: 18rpx;
+  flex: 1;
+  min-width: 0;
+  padding-right: 4rpx;
+}
+
+.record-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 18rpx;
 }
 
 .record-title,
@@ -1038,34 +1105,63 @@
 }
 
 .record-title {
-  margin-bottom: 8rpx;
-  font-size: 30rpx;
+  margin-bottom: 6rpx;
+  font-size: 28rpx;
   font-weight: 700;
-  line-height: 1.55;
+  line-height: 1.42;
   color: #324051;
 }
 
 .record-subtitle,
 .record-note {
-  font-size: 26rpx;
-  line-height: 1.65;
+  font-size: 24rpx;
+  line-height: 1.5;
   color: #718093;
+}
+
+.record-note {
+  margin-top: 4rpx;
 }
 
 .record-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  align-self: flex-start;
+  flex-shrink: 0;
+  gap: 12rpx;
+  min-width: 132rpx;
+  padding-top: 2rpx;
 }
 
-.ghost-edit-btn {
-  margin-right: 12rpx;
-  background: linear-gradient(180deg, rgba(238, 245, 255, 0.98) 0%, rgba(230, 240, 255, 0.96) 100%);
-  color: #4469bc;
+.record-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60rpx;
+  height: 60rpx;
+  min-height: 60rpx;
+  padding: 0;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
-.ghost-delete-btn {
-  background: linear-gradient(180deg, rgba(255, 244, 239, 0.98) 0%, rgba(255, 235, 228, 0.96) 100%);
-  color: #cf5f36;
+.record-action-icon {
+  width: 26rpx;
+  height: 26rpx;
+}
+
+.record-icon-edit {
+  border: 1rpx solid rgba(182, 204, 244, 0.92);
+  background: linear-gradient(180deg, rgba(241, 247, 255, 0.98) 0%, rgba(232, 241, 255, 0.96) 100%);
+  box-shadow: 0 8rpx 18rpx rgba(177, 197, 233, 0.18);
+}
+
+.record-icon-delete {
+  border: 1rpx solid rgba(247, 210, 195, 0.94);
+  background: linear-gradient(180deg, rgba(255, 245, 240, 0.98) 0%, rgba(255, 237, 230, 0.96) 100%);
+  box-shadow: 0 8rpx 18rpx rgba(232, 188, 171, 0.18);
 }
 
 @keyframes popupShellFadeIn {
