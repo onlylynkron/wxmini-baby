@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/growth/growth",
     "pages/manage/manage"
   ],
   "window": {
@@ -21,6 +22,12 @@
         "text": "记录",
         "iconPath": "assets/tabbar/record.png",
         "selectedIconPath": "assets/tabbar/record-active.png"
+      },
+      {
+        "pagePath": "pages/growth/growth",
+        "text": "成长",
+        "iconPath": "assets/tabbar/growth.png",
+        "selectedIconPath": "assets/tabbar/growth-active.png"
       },
       {
         "pagePath": "pages/manage/manage",

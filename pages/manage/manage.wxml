@@ -2,7 +2,7 @@
   <view class="hero-card">
     <view class="hero-text">
       <text class="hero-title">{{babyProfile.name || '我的宝宝'}}</text>
-      <text class="hero-desc">{{ageDetailText}}</text>
+      <text class="hero-desc">{{ageHeroText}}</text>
     </view>
 
     <view class="hero-stats">
@@ -75,10 +75,14 @@
       <view class="manage-card">
         <text class="manage-card-title">邀请家人一起管理</text>
         <text class="manage-card-desc">{{collaborationHintText}}</text>
-        <button wx:if="{{storageMeta.collaborationEnabled}}" class="primary-btn manage-share-btn" open-type="share">
+        <button
+          wx:if="{{storageMeta.collaborationEnabled && currentUserRole === 'owner'}}"
+          class="primary-btn manage-share-btn"
+          open-type="share"
+        >
           分享给微信好友
         </button>
-        <text wx:else class="helper-text">开启云开发后可邀请家人共同记录。</text>
+        <text wx:elif="{{!storageMeta.collaborationEnabled}}" class="helper-text">开启云开发后可邀请家人共同记录。</text>
       </view>
 
       <view class="member-list">
@@ -130,4 +134,5 @@
       </button>
     </view>
   </view>
+
 </view>

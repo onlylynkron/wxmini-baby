@@ -3,7 +3,6 @@ const babyService = require("../../utils/baby-service");
 const RECORD_TYPES = [
   { id: "feeding", label: "喝奶" },
   { id: "diaper", label: "尿布" },
-  { id: "growth", label: "成长" },
   { id: "sleep", label: "睡眠" },
   { id: "medicine", label: "喂药" },
   { id: "temperature", label: "体温" },
@@ -228,6 +227,10 @@ function isBreastfeedingMethod(method) {
 function normalizeDiaperType(diaperType) {
   const value = String(diaperType || "").trim();
   return DIAPER_TYPES.includes(value) ? value : "";
+}
+
+function shouldShowPoopFields(diaperType) {
+  return diaperType === "便便" || diaperType === "混合";
 }
 
 function normalizePoopColorId(colorId) {
@@ -551,7 +554,7 @@ function buildCollaborationHint(storageMeta, canManageMembers) {
     return "分享给微信好友，对方打开后会自动加入当前宝宝。";
   }
 
-  return "可继续分享邀请家人一起记录当前宝宝。";
+  return "仅管理员可邀请其他成员加入协作。";
 }
 
 function buildCollaborationSummaryText(storageMeta, members, canManageMembers) {
@@ -789,6 +792,7 @@ function buildLatestStatusCard(label, record, detailText, emptyText, cardClass) 
       timeText: "暂无记录",
       detailText: "",
       relativeText: emptyText,
+      summaryText: emptyText,
       cardClass,
       toneClass: "latest-status-tone-empty",
       badgeText: "",
@@ -803,7 +807,8 @@ function buildLatestStatusCard(label, record, detailText, emptyText, cardClass) 
     label,
     timeText: formatLatestRecordTime(record),
     detailText,
-    relativeText: formatRelativeDuration(record),
+    relativeText: "",
+    summaryText: detailText || "",
     cardClass,
     toneClass: `latest-status-tone-${tone}`,
     badgeText: badge.text,
@@ -857,14 +862,12 @@ function formatMetric(value, unit) {
   return value ? `${value}${unit}` : "--";
 }
 
-function buildHeroStats(ageInfo, members, summary) {
+function buildHeroStats(summary) {
   return [
-    { label: "宝宝年龄", value: ageInfo.shortText },
-    { label: "今日喝奶", value: `${summary.feedingCount} 次` },
-    { label: "今日奶量", value: `${summary.totalAmount} ml` },
-    { label: "今日尿布", value: `${summary.diaperCount} 次` },
-    { label: "今日睡眠", value: `${summary.sleepMinutes} 分钟` },
-    { label: "共同管理", value: `${members.length} 人` },
+    { label: "喝奶", value: `${summary.feedingCount} 次`, cardClass: "hero-stat-feeding" },
+    { label: "奶量", value: `${summary.totalAmount} ml`, cardClass: "hero-stat-amount" },
+    { label: "尿布", value: `${summary.diaperCount} 次`, cardClass: "hero-stat-diaper" },
+    { label: "睡眠", value: `${summary.sleepMinutes} 分钟`, cardClass: "hero-stat-sleep" },
   ];
 }
 
@@ -872,7 +875,6 @@ function buildFilterStats(summary) {
   return [
     { label: "喝奶", value: `${summary.feedingCount} 次` },
     { label: "尿布", value: `${summary.diaperCount} 次` },
-    { label: "成长", value: `${summary.growthCount} 次` },
     { label: "睡眠", value: `${summary.sleepMinutes} 分钟` },
     { label: "喂药", value: `${summary.medicineCount} 次` },
     { label: "体温", value: `${summary.temperatureCount} 次` },
@@ -932,6 +934,10 @@ function sortRecords(records) {
 
 function filterRecords(records, filterDate, filterType) {
   return records.filter((record) => {
+    if (record.type === "growth") {
+      return false;
+    }
+
     if (filterDate && record.date !== filterDate) {
       return false;
     }
@@ -1211,6 +1217,7 @@ Page({
     amountPickerIndex: getAmountPickerIndex("", getPreferredFeedingMethod()),
     editingId: "",
     editingSummaryText: "",
+    noteExpanded: false,
     shouldAutoSyncFormDate: true,
     shouldAutoSyncFormTime: true,
     ageShortText: "未设置",
@@ -1272,6 +1279,7 @@ Page({
     this.setData({
       editingId: "",
       editingSummaryText: "",
+      noteExpanded: false,
       shouldAutoSyncFormDate: true,
       shouldAutoSyncFormTime: true,
       form: createDefaultForm(),
@@ -1329,7 +1337,7 @@ Page({
     const allRecords = sortRecords((state.records || []).map(normalizeIncomingRecord));
     const todaySummary = getSummary(allRecords, this.data.todayDate);
     const ageInfo = getAgeInfo(babyProfile.birthDate);
-    const heroStats = buildHeroStats(ageInfo, members, todaySummary);
+    const heroStats = buildHeroStats(todaySummary);
     const memberList = buildMemberList(members, canManageMembers);
 
     this.setData({
@@ -1378,7 +1386,8 @@ Page({
 
   onShareAppMessage() {
     const inviteCode = normalizeInviteCode(this.data.babyProfile.inviteCode);
-    const canShareInvite = this.data.storageMeta.collaborationEnabled && inviteCode;
+    const canShareInvite =
+      this.data.storageMeta.collaborationEnabled && this.data.currentUserRole === "owner" && inviteCode;
 
     return {
       title: canShareInvite
@@ -1478,7 +1487,7 @@ Page({
     const todayDate = nextDate;
     const ageInfo = getAgeInfo(this.data.babyProfile.birthDate);
     const todaySummary = getSummary(allRecords, todayDate);
-    const heroStats = buildHeroStats(ageInfo, this.data.members || [], todaySummary);
+    const heroStats = buildHeroStats(todaySummary);
     const editingRecord = this.data.editingId
       ? allRecords.find((item) => item.id === this.data.editingId)
       : null;
@@ -1620,6 +1629,12 @@ Page({
     });
   },
 
+  handleToggleNote() {
+    this.setData({
+      noteExpanded: !this.data.noteExpanded,
+    });
+  },
+
   handleFeedingMethodChange(event) {
     const method = normalizeFeedingMethod(event.currentTarget.dataset.method);
     const currentMethod = this.data.form.method;
@@ -1657,8 +1672,14 @@ Page({
 
   handleDiaperTypeChange(event) {
     const { diaperType } = event.currentTarget.dataset;
+    const nextDiaperType = this.data.form.diaperType === diaperType ? "" : diaperType;
+    const shouldKeepPoopFields = shouldShowPoopFields(nextDiaperType);
+
     this.setData({
-      "form.diaperType": this.data.form.diaperType === diaperType ? "" : diaperType,
+      "form.diaperType": nextDiaperType,
+      "form.poopColorId": shouldKeepPoopFields ? this.data.form.poopColorId : "",
+      "form.poopShapeId": shouldKeepPoopFields ? this.data.form.poopShapeId : "",
+      "form.diaperRash": shouldKeepPoopFields ? this.data.form.diaperRash : "",
     });
   },
 
@@ -1797,6 +1818,7 @@ Page({
     this.setData({
       editingId: id,
       editingSummaryText: buildEditingSummary(record),
+      noteExpanded: Boolean(record.note),
       form: buildFormFromRecord(record),
       amountPickerIndex: getAmountPickerIndex(record.amount, record.method),
     });
@@ -1869,9 +1891,9 @@ Page({
 
     if (form.type === "diaper") {
       record.diaperType = form.diaperType;
-      record.poopColorId = form.poopColorId;
-      record.poopShapeId = form.poopShapeId;
-      record.diaperRash = form.diaperRash;
+      record.poopColorId = shouldShowPoopFields(form.diaperType) ? form.poopColorId : "";
+      record.poopShapeId = shouldShowPoopFields(form.diaperType) ? form.poopShapeId : "";
+      record.diaperRash = shouldShowPoopFields(form.diaperType) ? form.diaperRash : "";
     }
 
     if (form.type === "sleep") {

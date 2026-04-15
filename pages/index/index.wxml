@@ -6,7 +6,7 @@
     </view>
 
     <view class="hero-stats">
-      <view wx:for="{{heroStats}}" wx:key="label" class="stat-card">
+      <view wx:for="{{heroStats}}" wx:key="label" class="stat-card {{item.cardClass}}">
         <text class="stat-label">{{item.label}}</text>
         <text class="stat-value">{{item.value}}</text>
       </view>
@@ -25,8 +25,7 @@
           </view>
         </view>
         <text class="latest-status-time">{{item.timeText}}</text>
-        <text wx:if="{{item.detailText}}" class="latest-status-detail">{{item.detailText}}</text>
-        <text class="latest-status-relative">{{item.relativeText}}</text>
+        <text class="latest-status-summary">{{item.summaryText}}</text>
       </view>
     </view>
   </view>
@@ -36,7 +35,7 @@
   <view class="record-entry-shell {{editingId ? 'record-entry-shell-popup' : ''}}" bindtap="handlePopupClose">
     <view class="panel record-entry-panel {{editingId ? 'record-entry-panel-popup' : ''}}" catchtap="handlePopupTap">
       <view class="section-head">
-        <text class="section-title">{{editingId ? '编辑记录' : '新增记录'}}</text>
+        <text class="section-title">{{editingId ? '编辑记录' : '快速记录'}}</text>
         <text wx:if="{{editingId}}" class="section-note">保存后顶部时间会立即同步</text>
       </view>
 
@@ -49,13 +48,12 @@
       </view>
 
       <view class="field">
-        <text class="field-label">记录类型</text>
         <scroll-view scroll-x class="scroll-select">
-          <view class="scroll-track">
+          <view class="scroll-track scroll-track-compact">
             <view
               wx:for="{{recordTypes}}"
               wx:key="id"
-              class="option-card {{form.type === item.id ? 'option-card-active' : ''}}"
+              class="option-card option-card-compact {{form.type === item.id ? 'option-card-active' : ''}}"
               data-type="{{item.id}}"
               bindtap="handleTypeChange"
             >
@@ -65,17 +63,17 @@
         </scroll-view>
       </view>
 
-      <view class="field-row">
-        <view class="field">
-          <text class="field-label">日期</text>
+      <view class="field-row field-row-compact">
+        <view class="field field-compact">
+          <text class="field-label field-label-compact">日期</text>
           <picker mode="date" value="{{form.date}}" bindchange="handleDateChange">
-            <view class="picker-field">{{form.date}}</view>
+            <view class="picker-field picker-field-compact">{{form.date}}</view>
           </picker>
         </view>
-        <view class="field">
-          <text class="field-label">时间</text>
+        <view class="field field-compact">
+          <text class="field-label field-label-compact">时间</text>
           <picker mode="time" value="{{form.time}}" bindchange="handleTimeChange">
-            <view class="picker-field">{{form.time}}</view>
+            <view class="picker-field picker-field-compact">{{form.time}}</view>
           </picker>
         </view>
       </view>
@@ -145,53 +143,55 @@
           </scroll-view>
         </view>
 
-        <view class="field">
-          <text class="field-label">便便颜色（可选）</text>
-          <view class="poop-grid">
-            <view
-              wx:for="{{poopColors}}"
-              wx:key="id"
-              class="poop-card {{form.poopColorId === item.id ? 'poop-card-active' : ''}}"
-              data-color-id="{{item.id}}"
-              bindtap="handlePoopColorChange"
-            >
-              <image class="poop-image" src="{{item.image}}" mode="aspectFit" />
-              <text class="poop-name">{{item.label}}</text>
+        <block wx:if="{{form.diaperType === '便便' || form.diaperType === '混合'}}">
+          <view class="field">
+            <text class="field-label">便便颜色（可选）</text>
+            <view class="poop-grid">
+              <view
+                wx:for="{{poopColors}}"
+                wx:key="id"
+                class="poop-card {{form.poopColorId === item.id ? 'poop-card-active' : ''}}"
+                data-color-id="{{item.id}}"
+                bindtap="handlePoopColorChange"
+              >
+                <image class="poop-image" src="{{item.image}}" mode="aspectFit" />
+                <text class="poop-name">{{item.label}}</text>
+              </view>
             </view>
           </view>
-        </view>
 
-        <view class="field">
-          <text class="field-label">便便形状（可选）</text>
-          <scroll-view scroll-x class="scroll-select">
-            <view class="scroll-track">
+          <view class="field">
+            <text class="field-label">便便形状（可选）</text>
+            <scroll-view scroll-x class="scroll-select">
+              <view class="scroll-track">
+                <view
+                  wx:for="{{poopShapes}}"
+                  wx:key="id"
+                  class="pill-option pill-option-shape {{form.poopShapeId === item.id ? 'pill-option-active' : ''}}"
+                  data-shape-id="{{item.id}}"
+                  bindtap="handlePoopShapeChange"
+                >
+                  {{item.label}}
+                </view>
+              </view>
+            </scroll-view>
+          </view>
+
+          <view class="field">
+            <text class="field-label">红屁屁（可选）</text>
+            <view class="field-row diaper-rash-row">
               <view
-                wx:for="{{poopShapes}}"
+                wx:for="{{diaperRashOptions}}"
                 wx:key="id"
-                class="pill-option pill-option-shape {{form.poopShapeId === item.id ? 'pill-option-active' : ''}}"
-                data-shape-id="{{item.id}}"
-                bindtap="handlePoopShapeChange"
+                class="pill-option diaper-rash-option {{form.diaperRash === item.id ? 'pill-option-active' : ''}}"
+                data-rash-id="{{item.id}}"
+                bindtap="handleDiaperRashChange"
               >
                 {{item.label}}
               </view>
             </view>
-          </scroll-view>
-        </view>
-
-        <view class="field">
-          <text class="field-label">红屁屁（可选）</text>
-          <view class="field-row diaper-rash-row">
-            <view
-              wx:for="{{diaperRashOptions}}"
-              wx:key="id"
-              class="pill-option diaper-rash-option {{form.diaperRash === item.id ? 'pill-option-active' : ''}}"
-              data-rash-id="{{item.id}}"
-              bindtap="handleDiaperRashChange"
-            >
-              {{item.label}}
-            </view>
           </view>
-        </view>
+        </block>
       </block>
 
       <block wx:if="{{form.type === 'growth'}}">
@@ -327,15 +327,20 @@
         </view>
       </block>
 
-      <view class="field">
-        <text class="field-label">备注</text>
-        <textarea
-          class="textarea-field"
-          placeholder="记录状态、反应或其他说明"
-          value="{{form.note}}"
-          maxlength="200"
-          bindinput="handleNoteInput"
-        ></textarea>
+      <view class="note-box">
+        <view class="note-toggle" bindtap="handleToggleNote">
+          <text class="note-toggle-title">备注</text>
+          <text class="note-toggle-action">{{noteExpanded ? '收起' : (form.note ? '展开已填写备注' : '选填')}}</text>
+        </view>
+        <view wx:if="{{noteExpanded}}" class="note-editor">
+          <textarea
+            class="textarea-field textarea-field-compact"
+            placeholder="记录状态、反应或其他说明"
+            value="{{form.note}}"
+            maxlength="200"
+            bindinput="handleNoteInput"
+          ></textarea>
+        </view>
       </view>
 
       <button class="primary-btn" bindtap="handleSubmit">

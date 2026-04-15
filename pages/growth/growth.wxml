@@ -1,0 +1,139 @@
+<view class="page">
+  <view class="hero-card">
+    <view class="hero-text">
+      <text class="hero-title">{{babyProfile.name || '我的宝宝'}}</text>
+      <text class="hero-desc">{{ageHeroText}}</text>
+    </view>
+
+    <view class="hero-stats">
+      <view wx:for="{{growthStats}}" wx:key="label" class="stat-card">
+        <text class="stat-label">{{item.label}}</text>
+        <text class="stat-value">{{item.value}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="section-head">
+      <text class="section-title">成长记录</text>
+      <text class="section-note">{{ageShortText}}</text>
+    </view>
+
+    <view wx:if="{{growthEntryCollapsed}}" class="growth-entry-inline">
+      <view class="growth-entry-inline-main">
+        <text class="growth-entry-inline-desc">
+          最近记录：{{growthLatest.dateText}} · 身高 {{growthLatest.heightText}} · 体重 {{growthLatest.weightText}} · 头围 {{growthLatest.headText}}
+        </text>
+      </view>
+      <button class="ghost-btn growth-entry-inline-btn" size="mini" bindtap="handleExpandGrowthEntry">新增</button>
+    </view>
+    <view wx:else class="manage-card growth-entry-card">
+      <text class="manage-card-title">记录身高、体重、头围</text>
+      <text class="manage-card-desc">成长记录单独保存在成长页，不进入首页日常记录列表。</text>
+
+      <view class="field">
+        <text class="field-label">记录日期</text>
+        <picker mode="date" value="{{growthForm.date}}" bindchange="handleGrowthDateChange">
+          <view class="picker-field">{{growthForm.date}}</view>
+        </picker>
+      </view>
+
+      <view class="field-row">
+        <view class="field">
+          <text class="field-label">身高（cm）</text>
+          <input class="input-field" type="digit" placeholder="例如 65" value="{{growthForm.height}}" bindinput="handleGrowthHeightInput" />
+        </view>
+        <view class="field">
+          <text class="field-label">体重（kg）</text>
+          <input class="input-field" type="digit" placeholder="例如 6.8" value="{{growthForm.weight}}" bindinput="handleGrowthWeightInput" />
+        </view>
+      </view>
+
+      <view class="field">
+        <text class="field-label">头围（cm）</text>
+        <input class="input-field" type="digit" placeholder="例如 41" value="{{growthForm.headCircumference}}" bindinput="handleGrowthHeadInput" />
+      </view>
+
+      <button class="primary-btn growth-save-btn" bindtap="handleSaveGrowth">保存成长记录</button>
+      <button class="secondary-btn growth-collapse-btn" bindtap="handleCollapseGrowthEntry">收起录入</button>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="section-head">
+      <text class="section-title">成长曲线</text>
+      <text class="section-note">{{growthRecords.length ? '共 ' + growthRecords.length + ' 条' : '暂无记录'}}</text>
+    </view>
+
+    <view class="feeding-chart-card growth-feeding-chart">
+      <view class="feeding-chart-head">
+        <view class="feeding-chart-main">
+          <text class="feeding-chart-title">7天奶量图表</text>
+          <text class="feeding-chart-desc">最近 7 天累计 {{feedingChart.totalAmount}} ml</text>
+        </view>
+      </view>
+
+      <view class="feeding-chart-bars">
+        <view wx:for="{{feedingChart.days}}" wx:key="date" class="feeding-chart-item">
+          <text class="feeding-chart-value">{{item.amount}}</text>
+          <view class="feeding-chart-bar-shell">
+            <view
+              class="feeding-chart-bar {{item.isToday ? 'feeding-chart-bar-today' : ''}}"
+              style="height: {{item.barHeight}};"
+            ></view>
+          </view>
+          <text class="feeding-chart-day {{item.isToday ? 'feeding-chart-day-today' : ''}}">{{item.dayLabel}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="growth-summary-grid">
+      <view class="mini-stat">
+        <text class="mini-stat-label">最近日期</text>
+        <text class="mini-stat-value">{{growthLatest.dateText}}</text>
+      </view>
+      <view class="mini-stat">
+        <text class="mini-stat-label">最新身高</text>
+        <text class="mini-stat-value">{{growthLatest.heightText}}</text>
+      </view>
+      <view class="mini-stat">
+        <text class="mini-stat-label">最新体重</text>
+        <text class="mini-stat-value">{{growthLatest.weightText}}</text>
+      </view>
+      <view class="mini-stat">
+        <text class="mini-stat-label">最新头围</text>
+        <text class="mini-stat-value">{{growthLatest.headText}}</text>
+      </view>
+    </view>
+
+    <view class="growth-chart-card">
+      <text class="growth-chart-title">身高曲线</text>
+      <view class="growth-chart">
+        <view wx:for="{{growthHeightPoints}}" wx:key="dateText" class="growth-point" style="left: {{item.x}}; top: {{item.y}};">
+          <view class="growth-point-dot growth-point-height"></view>
+          <text class="growth-point-value">{{item.valueText}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="growth-chart-card">
+      <text class="growth-chart-title">体重曲线</text>
+      <view class="growth-chart">
+        <view wx:for="{{growthWeightPoints}}" wx:key="dateText" class="growth-point" style="left: {{item.x}}; top: {{item.y}};">
+          <view class="growth-point-dot growth-point-weight"></view>
+          <text class="growth-point-value">{{item.valueText}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="growth-chart-card">
+      <text class="growth-chart-title">头围曲线</text>
+      <view class="growth-chart">
+        <view wx:for="{{growthHeadPoints}}" wx:key="dateText" class="growth-point" style="left: {{item.x}}; top: {{item.y}};">
+          <view class="growth-point-dot growth-point-head"></view>
+          <text class="growth-point-value">{{item.valueText}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

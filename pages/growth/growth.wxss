@@ -1,0 +1,36 @@
+@import "../index/index.wxss";
+
+.growth-entry-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.growth-entry-inline-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.growth-entry-inline-desc {
+  display: block;
+}
+
+.growth-entry-inline-desc {
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: #7b8a9d;
+}
+
+.growth-entry-inline-btn {
+  flex-shrink: 0;
+  margin-left: 0;
+}
+
+.growth-feeding-chart {
+  margin-bottom: 22rpx;
+}
+
+.growth-collapse-btn {
+  margin-top: 14rpx;
+}

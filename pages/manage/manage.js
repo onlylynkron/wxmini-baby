@@ -110,6 +110,7 @@ function getAgeInfo(birthDate) {
     return {
       shortText: "未设置",
       detailText: "设置出生日期后会自动计算月龄和周岁。",
+      heroText: "设置出生日期后会自动计算总天数和月龄。",
     };
   }
 
@@ -121,6 +122,7 @@ function getAgeInfo(birthDate) {
     return {
       shortText: "日期无效",
       detailText: "出生日期不能晚于今天。",
+      heroText: "出生日期不能晚于今天。",
     };
   }
 
@@ -145,6 +147,7 @@ function getAgeInfo(birthDate) {
   return {
     shortText: years > 0 ? `${years}岁${months}个月` : monthAgeText,
     detailText: years > 0 ? `${years}岁${months}个月${days}天` : monthAgeText,
+    heroText: `${Math.max(diffDays, 0)}天 · ${monthAgeText}`,
   };
 }
 
@@ -215,7 +218,7 @@ function buildCollaborationHint(storageMeta, canManageMembers) {
     return "分享给微信好友，对方打开后会自动加入当前宝宝。";
   }
 
-  return "可继续分享邀请家人一起记录当前宝宝。";
+  return "仅管理员可邀请其他成员加入协作。";
 }
 
 function buildCollaborationSummaryText(storageMeta, members, canManageMembers) {
@@ -239,6 +242,19 @@ function buildManageStats(ageInfo, members, currentUserRole, storageMeta) {
   ];
 }
 
+function shouldDefaultCollapseProfile(babyProfile) {
+  const name = String((babyProfile && babyProfile.name) || "").trim();
+  return Boolean((babyProfile && babyProfile.birthDate) || (name && name !== "我的宝宝"));
+}
+
+function shouldDefaultCollapseCollaboration(storageMeta, members) {
+  if (!storageMeta || !storageMeta.collaborationEnabled) {
+    return false;
+  }
+
+  return (members || []).length > 1;
+}
+
 Page({
   data: {
     babyProfile: createDefaultProfile(),
@@ -251,6 +267,7 @@ Page({
     collaborationCollapsed: false,
     ageShortText: "未设置",
     ageDetailText: "设置出生日期后会自动计算月龄和周岁。",
+    ageHeroText: "设置出生日期后会自动计算总天数和月龄。",
     members: [],
     memberList: [],
     memberSummaryText: "1位成员",
@@ -329,10 +346,13 @@ Page({
         name: babyProfile.name || "我的宝宝",
         birthDate: babyProfile.birthDate || "",
       },
-      profileCollapsed: isProfileCollapsed(babyProfile.id),
-      collaborationCollapsed: isCollaborationCollapsed(babyProfile.id),
+      profileCollapsed: isProfileCollapsed(babyProfile.id) || shouldDefaultCollapseProfile(babyProfile),
+      collaborationCollapsed:
+        isCollaborationCollapsed(babyProfile.id) ||
+        shouldDefaultCollapseCollaboration(storageMeta, members),
       ageShortText: ageInfo.shortText,
       ageDetailText: ageInfo.detailText,
+      ageHeroText: ageInfo.heroText,
       members,
       memberList: buildMemberList(members, canManageMembers),
       memberSummaryText: buildMemberSummary(members),
@@ -366,7 +386,8 @@ Page({
 
   onShareAppMessage() {
     const inviteCode = normalizeInviteCode(this.data.babyProfile.inviteCode);
-    const canShareInvite = this.data.storageMeta.collaborationEnabled && inviteCode;
+    const canShareInvite =
+      this.data.storageMeta.collaborationEnabled && this.data.currentUserRole === "owner" && inviteCode;
 
     return {
       title: canShareInvite
