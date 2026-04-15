@@ -16,7 +16,12 @@
   <view class="panel">
     <view class="section-head">
       <text class="section-title">成长记录</text>
-      <text class="section-note">{{ageShortText}}</text>
+      <view class="growth-section-side">
+        <text class="section-note">{{ageShortText}}</text>
+        <view class="growth-history-trigger" bindtap="handleOpenGrowthHistory">
+          <image class="growth-history-trigger-icon" src="/assets/icons/history.svg" mode="aspectFit" />
+        </view>
+      </view>
     </view>
 
     <view wx:if="{{growthEntryCollapsed}}" class="growth-entry-inline">
@@ -28,8 +33,16 @@
       <button class="ghost-btn growth-entry-inline-btn" size="mini" bindtap="handleExpandGrowthEntry">新增</button>
     </view>
     <view wx:else class="manage-card growth-entry-card">
-      <text class="manage-card-title">记录身高、体重、头围</text>
+      <text class="manage-card-title">{{growthEditingId ? '编辑成长记录' : '记录身高、体重、头围'}}</text>
       <text class="manage-card-desc">成长记录单独保存在成长页，不进入首页日常记录列表。</text>
+
+      <view wx:if="{{growthEditingId}}" class="edit-banner growth-edit-banner">
+        <view class="edit-banner-main">
+          <text class="edit-banner-title">正在编辑成长记录</text>
+          <text class="edit-banner-desc">修改后会同步更新成长曲线和历史记录。</text>
+        </view>
+        <button class="ghost-btn edit-banner-btn" size="mini" bindtap="handleCancelGrowthEdit">取消</button>
+      </view>
 
       <view class="field">
         <text class="field-label">记录日期</text>
@@ -54,7 +67,7 @@
         <input class="input-field" type="digit" placeholder="例如 41" value="{{growthForm.headCircumference}}" bindinput="handleGrowthHeadInput" />
       </view>
 
-      <button class="primary-btn growth-save-btn" bindtap="handleSaveGrowth">保存成长记录</button>
+      <button class="primary-btn growth-save-btn" bindtap="handleSaveGrowth">{{growthEditingId ? '保存修改' : '保存成长记录'}}</button>
       <button class="secondary-btn growth-collapse-btn" bindtap="handleCollapseGrowthEntry">收起录入</button>
     </view>
   </view>
@@ -109,9 +122,12 @@
     <view class="growth-chart-card">
       <text class="growth-chart-title">身高曲线</text>
       <view class="growth-chart">
-        <view wx:for="{{growthHeightPoints}}" wx:key="dateText" class="growth-point" style="left: {{item.x}}; top: {{item.y}};">
-          <view class="growth-point-dot growth-point-height"></view>
-          <text class="growth-point-value">{{item.valueText}}</text>
+        <view class="growth-chart-plot">
+          <canvas wx:if="{{growthHeightChart.hasLine}}" id="growthHeightCanvas" canvas-id="growthHeightCanvas" class="growth-chart-line"></canvas>
+          <view wx:for="{{growthHeightChart.points}}" wx:key="dateText" class="growth-point {{growthChartAnimated ? 'growth-point-animated' : ''}}" style="left: {{item.x}}; top: {{item.y}}; animation-delay: {{index * 80}}ms;">
+            <view class="growth-point-dot growth-point-height"></view>
+            <text class="growth-point-value growth-point-value-{{item.labelPosition}}">{{item.valueText}}</text>
+          </view>
         </view>
       </view>
     </view>
@@ -119,9 +135,12 @@
     <view class="growth-chart-card">
       <text class="growth-chart-title">体重曲线</text>
       <view class="growth-chart">
-        <view wx:for="{{growthWeightPoints}}" wx:key="dateText" class="growth-point" style="left: {{item.x}}; top: {{item.y}};">
-          <view class="growth-point-dot growth-point-weight"></view>
-          <text class="growth-point-value">{{item.valueText}}</text>
+        <view class="growth-chart-plot">
+          <canvas wx:if="{{growthWeightChart.hasLine}}" id="growthWeightCanvas" canvas-id="growthWeightCanvas" class="growth-chart-line"></canvas>
+          <view wx:for="{{growthWeightChart.points}}" wx:key="dateText" class="growth-point {{growthChartAnimated ? 'growth-point-animated' : ''}}" style="left: {{item.x}}; top: {{item.y}}; animation-delay: {{index * 80}}ms;">
+            <view class="growth-point-dot growth-point-weight"></view>
+            <text class="growth-point-value growth-point-value-{{item.labelPosition}}">{{item.valueText}}</text>
+          </view>
         </view>
       </view>
     </view>
@@ -129,11 +148,57 @@
     <view class="growth-chart-card">
       <text class="growth-chart-title">头围曲线</text>
       <view class="growth-chart">
-        <view wx:for="{{growthHeadPoints}}" wx:key="dateText" class="growth-point" style="left: {{item.x}}; top: {{item.y}};">
-          <view class="growth-point-dot growth-point-head"></view>
-          <text class="growth-point-value">{{item.valueText}}</text>
+        <view class="growth-chart-plot">
+          <canvas wx:if="{{growthHeadChart.hasLine}}" id="growthHeadCanvas" canvas-id="growthHeadCanvas" class="growth-chart-line"></canvas>
+          <view wx:for="{{growthHeadChart.points}}" wx:key="dateText" class="growth-point {{growthChartAnimated ? 'growth-point-animated' : ''}}" style="left: {{item.x}}; top: {{item.y}}; animation-delay: {{index * 80}}ms;">
+            <view class="growth-point-dot growth-point-head"></view>
+            <text class="growth-point-value growth-point-value-{{item.labelPosition}}">{{item.valueText}}</text>
+          </view>
         </view>
       </view>
+    </view>
+  </view>
+
+  <view wx:if="{{growthHistoryVisible}}" class="growth-history-mask" bindtap="handleCloseGrowthHistory">
+    <view class="growth-history-modal" catchtap="handleGrowthHistoryPanelTap">
+      <view class="growth-history-head">
+        <view class="growth-history-head-main">
+          <text class="growth-history-title">成长历史</text>
+          <text class="growth-history-desc">{{growthHistoryRecords.length}} 条记录</text>
+        </view>
+        <button class="ghost-btn growth-history-close" size="mini" bindtap="handleCloseGrowthHistory">关闭</button>
+      </view>
+
+      <view wx:if="{{!growthHistoryRecords.length}}" class="empty-state growth-history-empty">
+        <text class="empty-title">还没有成长记录</text>
+        <text class="empty-desc">先添加一条身高、体重或头围记录。</text>
+      </view>
+
+      <scroll-view wx:else scroll-y class="growth-history-scroll">
+        <view wx:for="{{growthHistoryRecords}}" wx:key="id" class="record-card growth-history-card">
+          <view class="record-top">
+            <view class="record-meta">
+              <view class="record-badge record-badge-growth">成长</view>
+              <text class="record-time">{{item.date}}</text>
+            </view>
+          </view>
+
+          <view class="record-body">
+            <view class="record-main">
+              <text class="record-title">{{item.metricsText}}</text>
+            </view>
+
+            <view class="record-actions">
+              <view class="record-icon-btn record-icon-edit" data-id="{{item.id}}" bindtap="handleEditGrowth">
+                <image class="record-action-icon" src="/assets/icons/edit.svg" mode="aspectFit" />
+              </view>
+              <view class="record-icon-btn record-icon-delete" data-id="{{item.id}}" bindtap="handleDeleteGrowth">
+                <image class="record-action-icon" src="/assets/icons/delete.svg" mode="aspectFit" />
+              </view>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
     </view>
   </view>
 </view>

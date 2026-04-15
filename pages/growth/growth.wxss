@@ -1,5 +1,28 @@
 @import "../index/index.wxss";
 
+.growth-section-side {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.growth-history-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60rpx;
+  height: 60rpx;
+  border: 1rpx solid rgba(238, 224, 217, 0.96);
+  border-radius: 999rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 244, 241, 0.94) 100%);
+  box-shadow: 0 8rpx 18rpx rgba(226, 208, 200, 0.12);
+}
+
+.growth-history-trigger-icon {
+  width: 26rpx;
+  height: 26rpx;
+}
+
 .growth-entry-inline {
   display: flex;
   align-items: center;
@@ -33,4 +56,84 @@
 
 .growth-collapse-btn {
   margin-top: 14rpx;
+}
+
+.growth-edit-banner {
+  margin-bottom: 18rpx;
+}
+
+.growth-history-card {
+  margin-bottom: 14rpx;
+}
+
+.growth-history-card:last-child {
+  margin-bottom: 0;
+}
+
+.growth-history-mask {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 32rpx 24rpx calc(24rpx + env(safe-area-inset-bottom));
+  background: rgba(70, 57, 52, 0.24);
+  backdrop-filter: blur(12rpx);
+}
+
+.growth-history-modal {
+  width: 100%;
+  max-height: 72vh;
+  padding: 26rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.94);
+  border-radius: 34rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(255, 248, 244, 0.97) 100%);
+  box-shadow: 0 28rpx 60rpx rgba(132, 101, 84, 0.18);
+}
+
+.growth-history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  margin-bottom: 20rpx;
+}
+
+.growth-history-head-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.growth-history-title,
+.growth-history-desc {
+  display: block;
+}
+
+.growth-history-title {
+  margin-bottom: 6rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #344052;
+}
+
+.growth-history-desc {
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #8c9aab;
+}
+
+.growth-history-close {
+  flex-shrink: 0;
+}
+
+.growth-history-scroll {
+  max-height: calc(72vh - 116rpx);
+}
+
+.growth-history-empty {
+  padding: 40rpx 10rpx 18rpx;
 }

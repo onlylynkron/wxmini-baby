@@ -1385,15 +1385,9 @@ Page({
   },
 
   onShareAppMessage() {
-    const inviteCode = normalizeInviteCode(this.data.babyProfile.inviteCode);
-    const canShareInvite =
-      this.data.storageMeta.collaborationEnabled && this.data.currentUserRole === "owner" && inviteCode;
-
     return {
-      title: canShareInvite
-        ? `邀请你一起管理${this.data.babyProfile.name || "宝宝记录"}`
-        : `${this.data.babyProfile.name || "宝宝"}护理记录`,
-      path: canShareInvite ? `/pages/manage/manage?inviteCode=${inviteCode}` : "/pages/index/index",
+      title: `${this.data.babyProfile.name || "宝宝"}护理记录`,
+      path: "/pages/index/index",
     };
   },
 

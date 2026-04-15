@@ -384,10 +384,14 @@ Page({
     }
   },
 
-  onShareAppMessage() {
+  onShareAppMessage(event) {
     const inviteCode = normalizeInviteCode(this.data.babyProfile.inviteCode);
     const canShareInvite =
-      this.data.storageMeta.collaborationEnabled && this.data.currentUserRole === "owner" && inviteCode;
+      event &&
+      event.from === "button" &&
+      this.data.storageMeta.collaborationEnabled &&
+      this.data.currentUserRole === "owner" &&
+      inviteCode;
 
     return {
       title: canShareInvite
