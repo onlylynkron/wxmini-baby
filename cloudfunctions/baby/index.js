@@ -434,7 +434,11 @@ function buildRecordPayload(record, babyId) {
 
 async function handleSaveProfile(openId, data) {
   const activeBabyId = await ensureActiveBabyId(openId);
-  await ensureMembership(openId, activeBabyId);
+  const currentMember = await ensureMembership(openId, activeBabyId);
+
+  if (currentMember.role !== "owner") {
+    throw new Error("只有管理员可以修改资料");
+  }
 
   await db.collection(COLLECTIONS.babies).doc(activeBabyId).update({
     data: {

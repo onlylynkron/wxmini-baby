@@ -475,5 +475,12 @@
         </view>
       </view>
     </view>
+
+    <view wx:if="{{records.length}}" class="record-list-footer">
+      <view wx:if="{{hasMoreRecords}}" class="record-list-footer-action" bindtap="handleLoadMoreRecords">
+        <text class="record-list-footer-text">{{isLoadingMoreRecords ? '加载中...' : '下滑继续加载'}}</text>
+      </view>
+      <text wx:else class="record-list-footer-text record-list-footer-text-muted">已经到底了</text>
+    </view>
   </view>
 </view>

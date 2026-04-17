@@ -26,35 +26,62 @@
           {{babyProfile.birthDate || '未设置出生日期'}} · {{ageDetailText}}
         </text>
       </view>
-      <button class="ghost-btn profile-toggle-btn" size="mini" bindtap="handleExpandProfile">编辑资料</button>
+      <button class="ghost-btn profile-toggle-btn" size="mini" bindtap="handleExpandProfile">
+        {{canEditProfile ? '编辑资料' : '查看资料'}}
+      </button>
     </view>
     <block wx:else>
-      <view class="field">
-        <text class="field-label">宝宝昵称</text>
-        <input
-          class="input-field"
-          placeholder="例如 小奶糖"
-          value="{{profileForm.name}}"
-          bindinput="handleProfileNameInput"
-        />
-      </view>
+      <block wx:if="{{canEditProfile}}">
+        <view class="field">
+          <text class="field-label">宝宝昵称</text>
+          <input
+            class="input-field"
+            placeholder="例如 小奶糖"
+            value="{{profileForm.name}}"
+            bindinput="handleProfileNameInput"
+          />
+        </view>
 
-      <view class="field">
-        <text class="field-label">出生日期</text>
-        <picker mode="date" value="{{profileForm.birthDate || todayDate}}" bindchange="handleBirthDateChange">
-          <view class="picker-field {{profileForm.birthDate ? '' : 'picker-placeholder'}}">
-            {{profileForm.birthDate || '选择出生日期'}}
-          </view>
-        </picker>
-      </view>
+        <view class="field">
+          <text class="field-label">出生日期</text>
+          <picker mode="date" value="{{profileForm.birthDate || todayDate}}" bindchange="handleBirthDateChange">
+            <view class="picker-field {{profileForm.birthDate ? '' : 'picker-placeholder'}}">
+              {{profileForm.birthDate || '选择出生日期'}}
+            </view>
+          </picker>
+        </view>
 
-      <view class="info-card">
-        <text class="info-card-title">年龄自动计算</text>
-        <text class="info-card-desc">{{ageDetailText}}</text>
-      </view>
+        <view class="info-card">
+          <text class="info-card-title">年龄自动计算</text>
+          <text class="info-card-desc">{{ageDetailText}}</text>
+        </view>
 
-      <button class="primary-btn" bindtap="handleSaveProfile">保存宝宝资料</button>
-      <button class="secondary-btn" bindtap="handleCollapseProfile">收起资料</button>
+        <button class="primary-btn" bindtap="handleSaveProfile">保存宝宝资料</button>
+        <button class="secondary-btn" bindtap="handleCollapseProfile">收起资料</button>
+      </block>
+      <block wx:else>
+        <view class="info-card">
+          <text class="info-card-title">宝宝昵称</text>
+          <text class="info-card-desc">{{babyProfile.name || '我的宝宝'}}</text>
+        </view>
+
+        <view class="info-card">
+          <text class="info-card-title">出生日期</text>
+          <text class="info-card-desc">{{babyProfile.birthDate || '未设置出生日期'}}</text>
+        </view>
+
+        <view class="info-card">
+          <text class="info-card-title">年龄自动计算</text>
+          <text class="info-card-desc">{{ageDetailText}}</text>
+        </view>
+
+        <view class="info-card">
+          <text class="info-card-title">权限说明</text>
+          <text class="info-card-desc">当前为协作者，仅可查看资料，需管理员修改。</text>
+        </view>
+
+        <button class="secondary-btn" bindtap="handleCollapseProfile">收起资料</button>
+      </block>
     </block>
   </view>
 
@@ -122,7 +149,14 @@
       <text class="section-note">{{recordCount}} 条</text>
     </view>
 
-    <view class="manage-card danger-manage-card">
+    <view wx:if="{{recordManageCollapsed}}" class="profile-summary-card collaboration-summary-card">
+      <view class="profile-summary-main">
+        <text class="profile-summary-name">删除数据</text>
+        <text class="profile-summary-desc">危险操作默认折叠，共 {{recordCount}} 条记录</text>
+      </view>
+      <button class="ghost-btn profile-toggle-btn" size="mini" bindtap="handleExpandRecordManage">展开管理</button>
+    </view>
+    <view wx:else class="manage-card danger-manage-card">
       <text class="manage-card-title">清空全部记录</text>
       <text class="manage-card-desc">仅管理员可操作，确认后当前宝宝全部记录将被删除且不可恢复。</text>
       <button
@@ -132,6 +166,7 @@
       >
         清空全部记录
       </button>
+      <button class="secondary-btn" bindtap="handleCollapseRecordManage">收起管理</button>
     </view>
   </view>
 

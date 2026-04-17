@@ -2,6 +2,7 @@ const babyService = require("../../utils/baby-service");
 
 const PROFILE_COLLAPSE_STORAGE_KEY = "baby-care-profile-collapse-state";
 const COLLABORATION_COLLAPSE_STORAGE_KEY = "baby-care-collaboration-collapse-state";
+const RECORD_MANAGE_COLLAPSE_STORAGE_KEY = "baby-care-record-manage-collapse-state";
 
 function pad(value) {
   return String(value).padStart(2, "0");
@@ -43,6 +44,11 @@ function readCollaborationCollapseState() {
   return state && typeof state === "object" ? state : {};
 }
 
+function readRecordManageCollapseState() {
+  const state = wx.getStorageSync(RECORD_MANAGE_COLLAPSE_STORAGE_KEY);
+  return state && typeof state === "object" ? state : {};
+}
+
 function isProfileCollapsed(babyId) {
   if (!babyId) {
     return false;
@@ -57,6 +63,19 @@ function isCollaborationCollapsed(babyId) {
   }
 
   return Boolean(readCollaborationCollapseState()[babyId]);
+}
+
+function isRecordManageCollapsed(babyId) {
+  if (!babyId) {
+    return true;
+  }
+
+  const state = readRecordManageCollapseState();
+  if (Object.prototype.hasOwnProperty.call(state, babyId)) {
+    return Boolean(state[babyId]);
+  }
+
+  return true;
 }
 
 function saveProfileCollapseState(babyId, collapsed) {
@@ -87,6 +106,16 @@ function saveCollaborationCollapseState(babyId, collapsed) {
   }
 
   wx.setStorageSync(COLLABORATION_COLLAPSE_STORAGE_KEY, state);
+}
+
+function saveRecordManageCollapseState(babyId, collapsed) {
+  if (!babyId) {
+    return;
+  }
+
+  const state = readRecordManageCollapseState();
+  state[babyId] = Boolean(collapsed);
+  wx.setStorageSync(RECORD_MANAGE_COLLAPSE_STORAGE_KEY, state);
 }
 
 function createDefaultProfile() {
@@ -278,7 +307,9 @@ Page({
     storageMeta: createDefaultStorageMeta(),
     manageStats: [],
     canLeaveBaby: false,
+    canEditProfile: true,
     canClearRecords: false,
+    recordManageCollapsed: true,
     recordCount: 0,
   },
 
@@ -291,7 +322,22 @@ Page({
   },
 
   onShow() {
+    if (wx.hideKeyboard) {
+      wx.hideKeyboard();
+    }
     this.syncDashboard();
+  },
+
+  onHide() {
+    if (wx.hideKeyboard) {
+      wx.hideKeyboard();
+    }
+  },
+
+  onUnload() {
+    if (wx.hideKeyboard) {
+      wx.hideKeyboard();
+    }
   },
 
   async syncDashboard() {
@@ -331,6 +377,14 @@ Page({
     });
   },
 
+  setRecordManageCollapsed(collapsed, babyId) {
+    const targetBabyId = babyId || this.data.babyProfile.id;
+    saveRecordManageCollapseState(targetBabyId, collapsed);
+    this.setData({
+      recordManageCollapsed: collapsed,
+    });
+  },
+
   applyState(state) {
     const babyProfile = state.baby || createDefaultProfile();
     const members = state.members || [];
@@ -358,12 +412,14 @@ Page({
       memberSummaryText: buildMemberSummary(members),
       currentUserRole,
       canManageMembers,
+      canEditProfile: currentUserRole === "owner",
       collaborationHintText: buildCollaborationHint(storageMeta, canManageMembers),
       collaborationSummaryText: buildCollaborationSummaryText(storageMeta, members, canManageMembers),
       storageMeta,
       manageStats: buildManageStats(ageInfo, members, currentUserRole, storageMeta),
       canLeaveBaby: currentUserRole !== "owner",
       canClearRecords: currentUserRole === "owner",
+      recordManageCollapsed: isRecordManageCollapsed(babyProfile.id),
       recordCount: records.length,
     });
   },
@@ -464,7 +520,23 @@ Page({
     this.setCollaborationCollapsed(true);
   },
 
+  handleExpandRecordManage() {
+    this.setRecordManageCollapsed(false);
+  },
+
+  handleCollapseRecordManage() {
+    this.setRecordManageCollapsed(true);
+  },
+
   async handleSaveProfile() {
+    if (this.data.currentUserRole !== "owner") {
+      wx.showToast({
+        title: "只有管理员可以修改资料",
+        icon: "none",
+      });
+      return;
+    }
+
     const profileForm = this.data.profileForm;
 
     if (profileForm.birthDate && profileForm.birthDate > this.data.todayDate) {

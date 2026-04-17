@@ -423,15 +423,24 @@ Page({
   },
 
   onShow() {
+    if (wx.hideKeyboard) {
+      wx.hideKeyboard();
+    }
     this.loadGrowthPage();
   },
 
   onHide() {
     this.stopGrowthChartAnimations();
+    if (wx.hideKeyboard) {
+      wx.hideKeyboard();
+    }
   },
 
   onUnload() {
     this.stopGrowthChartAnimations();
+    if (wx.hideKeyboard) {
+      wx.hideKeyboard();
+    }
   },
 
   onShareAppMessage() {

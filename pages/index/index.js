@@ -8,6 +8,7 @@ const RECORD_TYPES = [
   { id: "temperature", label: "体温" },
 ];
 const RECORD_FILTER_OPTIONS = [{ id: "all", label: "全部" }, ...RECORD_TYPES];
+const RECORD_PAGE_SIZE = 20;
 
 const FEEDING_METHODS = ["配方奶", "母乳", "瓶装奶", "其他"];
 const FEEDING_AMOUNT_OPTIONS = [
@@ -1167,6 +1168,24 @@ function buildEditingSummary(record) {
   return `${typeMeta.label} · ${formatLatestRecordTime(record)}`;
 }
 
+function getNextVisibleRecordCount(totalCount, currentVisibleCount, options = {}) {
+  const { append = false, resetPaging = false } = options;
+
+  if (!totalCount) {
+    return 0;
+  }
+
+  if (append) {
+    return Math.min(totalCount, Math.max(currentVisibleCount, 0) + RECORD_PAGE_SIZE);
+  }
+
+  if (resetPaging) {
+    return Math.min(totalCount, RECORD_PAGE_SIZE);
+  }
+
+  return Math.min(totalCount, Math.max(currentVisibleCount || RECORD_PAGE_SIZE, RECORD_PAGE_SIZE));
+}
+
 function getMillisecondsUntilNextMinute() {
   const remainder = Date.now() % 60000;
   return remainder === 0 ? 60000 : 60000 - remainder;
@@ -1200,6 +1219,10 @@ Page({
     allRecords: [],
     records: [],
     recordGroups: [],
+    visibleRecordCount: 0,
+    totalFilteredRecordCount: 0,
+    hasMoreRecords: false,
+    isLoadingMoreRecords: false,
     todaySummary: createSummary(),
     filteredSummary: createSummary(),
     filterStats: [],
@@ -1242,16 +1265,28 @@ Page({
   },
 
   onShow() {
+    if (wx.hideKeyboard) {
+      wx.hideKeyboard();
+    }
     this.startLatestStatusTicker();
     this.syncDashboard();
   },
 
   onHide() {
     this.stopLatestStatusTicker();
+    if (this.data.editingId) {
+      this.resetForm();
+    }
+    if (wx.hideKeyboard) {
+      wx.hideKeyboard();
+    }
   },
 
   onUnload() {
     this.stopLatestStatusTicker();
+    if (wx.hideKeyboard) {
+      wx.hideKeyboard();
+    }
   },
 
   async syncDashboard() {
@@ -1431,28 +1466,46 @@ Page({
     }
   },
 
-  refreshView(allRecords) {
+  refreshView(allRecords, options = {}) {
     const records = sortRecords(allRecords);
     const filteredRecords = filterRecords(records, this.data.filterDate, this.data.filterType);
+    const visibleRecordCount = getNextVisibleRecordCount(
+      filteredRecords.length,
+      this.data.visibleRecordCount,
+      options
+    );
+    const visibleRecords = filteredRecords.slice(0, visibleRecordCount);
     const filteredSummary = getSummary(filteredRecords);
-    const recordGroups = buildRecordGroups(filteredRecords, records);
+    const recordGroups = buildRecordGroups(visibleRecords, records);
     const activeFilterParts = buildActiveFilterParts(this.data.filterDate, this.data.filterType);
     const hasActiveFilter = activeFilterParts.length > 0;
     const filterSummaryText = hasActiveFilter
       ? `当前筛选：${activeFilterParts.join(" · ")}`
       : "当前显示全部记录";
+    const hasMoreRecords = visibleRecordCount < filteredRecords.length;
+    const listNote = filteredRecords.length
+      ? hasMoreRecords
+        ? `已显示 ${visibleRecordCount}/${filteredRecords.length} 条${hasActiveFilter ? "结果" : ""}`
+        : `${filteredRecords.length} 条${hasActiveFilter ? "结果" : ""}`
+      : hasActiveFilter
+        ? "0 条结果"
+        : "0 条";
 
     this.setData({
       allRecords: records,
-      records: filteredRecords.map(buildRecordView),
+      records: visibleRecords.map(buildRecordView),
       recordGroups,
+      visibleRecordCount,
+      totalFilteredRecordCount: filteredRecords.length,
+      hasMoreRecords,
+      isLoadingMoreRecords: false,
       filteredSummary,
       filterStats: buildFilterStats(filteredSummary),
       filterPickerValue: this.data.filterDate || this.data.todayDate,
       filterTip: filterSummaryText,
       filterModeText: hasActiveFilter ? `已筛选 ${activeFilterParts.join(" · ")}` : "当前显示全部记录",
       hasActiveFilter,
-      listNote: hasActiveFilter ? `${filteredRecords.length} 条结果` : `${filteredRecords.length} 条`,
+      listNote,
       emptyTitle: hasActiveFilter ? "当前筛选下暂无记录" : "还没有记录",
       emptyDesc: hasActiveFilter
         ? "换个日期或分类试试，或先添加一条新记录。"
@@ -1537,6 +1590,14 @@ Page({
   },
 
   async handleSaveProfile() {
+    if (this.data.currentUserRole !== "owner") {
+      wx.showToast({
+        title: "只有管理员可以修改资料",
+        icon: "none",
+      });
+      return;
+    }
+
     const profileForm = this.data.profileForm;
 
     if (profileForm.birthDate && profileForm.birthDate > this.data.todayDate) {
@@ -1767,7 +1828,9 @@ Page({
         filterDate: event.detail.value,
       },
       () => {
-        this.refreshView(this.data.allRecords);
+        this.refreshView(this.data.allRecords, {
+          resetPaging: true,
+        });
       }
     );
   },
@@ -1780,7 +1843,9 @@ Page({
         filterType: type,
       },
       () => {
-        this.refreshView(this.data.allRecords);
+        this.refreshView(this.data.allRecords, {
+          resetPaging: true,
+        });
       }
     );
   },
@@ -1792,9 +1857,33 @@ Page({
         filterType: "all",
       },
       () => {
-        this.refreshView(this.data.allRecords);
+        this.refreshView(this.data.allRecords, {
+          resetPaging: true,
+        });
       }
     );
+  },
+
+  handleLoadMoreRecords() {
+    if (!this.data.hasMoreRecords || this.data.isLoadingMoreRecords) {
+      return;
+    }
+
+    this.setData({
+      isLoadingMoreRecords: true,
+    });
+
+    this.refreshView(this.data.allRecords, {
+      append: true,
+    });
+  },
+
+  onReachBottom() {
+    if (this.data.editingId) {
+      return;
+    }
+
+    this.handleLoadMoreRecords();
   },
 
   handleEdit(event) {
