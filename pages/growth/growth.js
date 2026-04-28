@@ -243,42 +243,8 @@ function hexToRgba(hexColor, alpha) {
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
-function buildSmoothCurvePoints(points, segments = 28, tension = 0.5) {
-  if (!points || points.length < 2) {
-    return points || [];
-  }
-
-  const result = [points[0]];
-
-  for (let index = 0; index < points.length - 1; index += 1) {
-    const p0 = points[index - 1] || points[index];
-    const p1 = points[index];
-    const p2 = points[index + 1];
-    const p3 = points[index + 2] || p2;
-
-    for (let step = 1; step <= segments; step += 1) {
-      const t = step / segments;
-      const t2 = t * t;
-      const t3 = t2 * t;
-
-      const x =
-        tension *
-        ((2 * p1.x) +
-          (-p0.x + p2.x) * t +
-          (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
-          (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
-      const y =
-        tension *
-        ((2 * p1.y) +
-          (-p0.y + p2.y) * t +
-          (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
-          (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
-
-      result.push({ x, y });
-    }
-  }
-
-  return result;
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
 }
 
 function createSummary() {
@@ -363,7 +329,7 @@ function buildRecentFeedingChart(records) {
 
 function buildGrowthStats(growthLatest, growthCount) {
   return [
-    { label: "记录数", value: `${growthCount} 条` },
+    { label: "记录", value: `${growthCount} 条` },
     { label: "身高", value: growthLatest.heightText },
     { label: "体重", value: growthLatest.weightText },
     { label: "头围", value: growthLatest.headText },
@@ -554,16 +520,43 @@ Page({
           x: (point.xValue / 100) * width,
           y: (point.yValue / 100) * height,
         }));
-        const smoothPoints = buildSmoothCurvePoints(points, 32, 0.52);
         const startTime = Date.now();
         const duration = 860;
 
-        const drawPolyline = (visiblePoints, lineWidth, strokeStyle, shadowColor) => {
+        const drawCurve = (lineWidth, strokeStyle, shadowColor) => {
+          if (points.length < 2) {
+            return;
+          }
+
           context.beginPath();
-          context.moveTo(visiblePoints[0].x, visiblePoints[0].y);
-          visiblePoints.slice(1).forEach((point) => {
-            context.lineTo(point.x, point.y);
-          });
+          context.moveTo(points[0].x, points[0].y);
+
+          if (points.length === 2) {
+            const start = points[0];
+            const end = points[1];
+            const direction = end.y >= start.y ? 1 : -1;
+            const arcOffset = Math.max(18, Math.abs(end.x - start.x) * 0.12);
+            const control = {
+              x: (start.x + end.x) / 2,
+              y: (start.y + end.y) / 2 - direction * arcOffset,
+            };
+            context.quadraticCurveTo(control.x, control.y, end.x, end.y);
+          } else {
+            for (let index = 1; index < points.length - 1; index += 1) {
+              const current = points[index];
+              const next = points[index + 1];
+              const midpoint = {
+                x: (current.x + next.x) / 2,
+                y: (current.y + next.y) / 2,
+              };
+              context.quadraticCurveTo(current.x, current.y, midpoint.x, midpoint.y);
+            }
+
+            const penultimate = points[points.length - 2];
+            const last = points[points.length - 1];
+            context.quadraticCurveTo(penultimate.x, penultimate.y, last.x, last.y);
+          }
+
           context.setStrokeStyle(strokeStyle);
           context.setLineWidth(lineWidth);
           context.setLineCap("round");
@@ -578,22 +571,16 @@ Page({
 
         const renderLine = (progress) => {
           const easedProgress = easeOutCubic(progress);
-          const visibleCount = Math.max(2, Math.floor(smoothPoints.length * easedProgress));
-          const visiblePoints = smoothPoints.slice(0, visibleCount);
+          const clipWidth = Math.max(1, width * easedProgress);
 
           context.clearRect(0, 0, width, height);
-          drawPolyline(
-            visiblePoints,
-            8.5,
-            hexToRgba(color, 0.16),
-            hexToRgba(color, 0.16)
-          );
-          drawPolyline(
-            visiblePoints,
-            3.6,
-            color,
-            ""
-          );
+          context.save();
+          context.beginPath();
+          context.rect(0, 0, clipWidth, height);
+          context.clip();
+          drawCurve(8.5, hexToRgba(color, 0.16), hexToRgba(color, 0.16));
+          drawCurve(3.6, color, "");
+          context.restore();
           context.draw();
         };
 

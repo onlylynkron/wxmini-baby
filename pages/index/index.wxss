@@ -28,13 +28,31 @@
   margin-bottom: 30rpx;
 }
 
+.hero-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14rpx;
+  margin-bottom: 12rpx;
+}
+
 .hero-title {
   display: block;
-  margin-bottom: 12rpx;
+  flex: 1;
+  min-width: 0;
   font-size: 46rpx;
   font-weight: 700;
-  letter-spacing: 1rpx;
   color: #2f3448;
+}
+
+.hero-vitamin-warning {
+  flex-shrink: 0;
+  padding: 7rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 226, 226, 0.94);
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #d83b3b;
 }
 
 .hero-desc {
@@ -825,6 +843,30 @@
   padding-bottom: 2rpx;
 }
 
+.segmented-options {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+
+.segmented-options .pill-option {
+  margin-right: 0;
+}
+
+.readonly-field {
+  min-height: 76rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 24rpx;
+  border: 1rpx solid rgba(239, 224, 218, 0.95);
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.74);
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #324051;
+}
+
 .option-card,
 .pill-option {
   display: inline-flex;
@@ -1572,35 +1614,123 @@
 }
 
 .record-card {
-  margin-bottom: 14rpx;
-  padding: 22rpx 24rpx;
-  border: 1rpx solid rgba(255, 255, 255, 0.94);
-  border-radius: 28rpx;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(250, 247, 244, 0.95) 100%);
-  box-shadow: 0 14rpx 28rpx rgba(229, 205, 193, 0.16);
+  position: relative;
+  margin-bottom: 12rpx;
+  padding: 0;
+  border: 0;
+  border-radius: 24rpx;
+  background: transparent;
+  box-shadow: none;
 }
 
 .record-group .record-card:last-child {
   margin-bottom: 0;
 }
 
-.record-top {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12rpx;
+.record-dot {
+  width: 18rpx;
+  height: 18rpx;
+  margin-top: 16rpx;
+  border-radius: 999rpx;
+  background: #a1acbc;
+  box-shadow: 0 4rpx 10rpx rgba(112, 128, 149, 0.2);
+  flex-shrink: 0;
 }
 
-.record-meta {
+.record-content {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  min-height: 96rpx;
+  padding: 16rpx 18rpx 16rpx 22rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.92);
+  border-radius: 22rpx;
+  background: linear-gradient(90deg, rgba(248, 250, 255, 0.98) 0%, rgba(255, 255, 255, 0.98) 42%, rgba(250, 247, 244, 0.96) 100%);
+  box-shadow: 0 8rpx 18rpx rgba(226, 208, 200, 0.12);
+  overflow: hidden;
+}
+
+.record-card-feeding .record-content {
+  background: linear-gradient(90deg, rgba(255, 244, 238, 0.98) 0%, rgba(255, 255, 255, 0.98) 42%, rgba(250, 247, 244, 0.96) 100%);
+}
+
+.record-card-diaper .record-content {
+  background: linear-gradient(90deg, rgba(239, 245, 255, 0.98) 0%, rgba(255, 255, 255, 0.98) 42%, rgba(250, 247, 244, 0.96) 100%);
+}
+
+.record-card-sleep .record-content {
+  background: linear-gradient(90deg, rgba(237, 250, 247, 0.98) 0%, rgba(255, 255, 255, 0.98) 42%, rgba(250, 247, 244, 0.96) 100%);
+}
+
+.record-card-medicine .record-content {
+  background: linear-gradient(90deg, rgba(248, 241, 255, 0.98) 0%, rgba(255, 255, 255, 0.98) 42%, rgba(250, 247, 244, 0.96) 100%);
+}
+
+.record-card-temperature .record-content {
+  background: linear-gradient(90deg, rgba(255, 241, 244, 0.98) 0%, rgba(255, 255, 255, 0.98) 42%, rgba(250, 247, 244, 0.96) 100%);
+}
+
+.record-card-growth .record-content {
+  background: linear-gradient(90deg, rgba(242, 244, 255, 0.98) 0%, rgba(255, 255, 255, 0.98) 42%, rgba(250, 247, 244, 0.96) 100%);
+}
+
+.record-card-feeding .record-dot {
+  background: #ff9f73;
+}
+
+.record-card-diaper .record-dot {
+  background: #7597ee;
+}
+
+.record-card-sleep .record-dot {
+  background: #65bea8;
+}
+
+.record-card-medicine .record-dot {
+  background: #a87be2;
+}
+
+.record-card-temperature .record-dot {
+  background: #ef7b8d;
+}
+
+.record-card-growth .record-dot {
+  background: #687ee8;
+}
+
+.record-time {
+  flex-shrink: 0;
+  margin-left: 12rpx;
+  font-size: 23rpx;
+  line-height: 1.35;
+  color: #8a98aa;
+}
+
+.record-primary-row,
+.record-secondary-row {
   display: flex;
   align-items: center;
-  gap: 14rpx;
-  flex: 1;
   min-width: 0;
+}
+
+.record-primary-row {
+  margin-bottom: 8rpx;
+}
+
+.record-secondary-row {
+  justify-content: space-between;
+  gap: 14rpx;
 }
 
 .record-badge {
   flex-shrink: 0;
-  padding: 8rpx 18rpx;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 62rpx;
+  margin-right: 12rpx;
+  padding: 7rpx 16rpx;
   border-radius: 999rpx;
   font-size: 21rpx;
   font-weight: 700;
@@ -1641,70 +1771,55 @@
   color: #5b6879;
 }
 
-.record-time {
-  margin-left: auto;
-  flex-shrink: 0;
-  font-size: 23rpx;
-  line-height: 1.4;
-  text-align: right;
-  color: #94a1b2;
-}
-
 .record-main {
   flex: 1;
   min-width: 0;
-  padding-right: 4rpx;
-}
-
-.record-body {
-  display: flex;
-  align-items: flex-start;
-  gap: 18rpx;
 }
 
 .record-title,
-.record-subtitle,
-.record-note {
+.record-subtitle {
   display: block;
 }
 
 .record-title {
-  margin-bottom: 6rpx;
-  font-size: 28rpx;
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 29rpx;
   font-weight: 700;
-  line-height: 1.42;
+  line-height: 1.35;
   color: #324051;
 }
 
-.record-subtitle,
-.record-note {
-  font-size: 24rpx;
-  line-height: 1.5;
+.record-subtitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 23rpx;
+  line-height: 1.35;
   color: #718093;
-}
-
-.record-note {
-  margin-top: 4rpx;
 }
 
 .record-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  align-self: flex-start;
   flex-shrink: 0;
-  gap: 12rpx;
-  min-width: 132rpx;
-  padding-top: 2rpx;
+  gap: 10rpx;
 }
 
 .record-icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 60rpx;
-  height: 60rpx;
-  min-height: 60rpx;
+  width: 50rpx;
+  height: 50rpx;
+  min-height: 50rpx;
   padding: 0;
   border-radius: 999rpx;
   box-sizing: border-box;
@@ -1712,20 +1827,20 @@
 }
 
 .record-action-icon {
-  width: 26rpx;
-  height: 26rpx;
+  width: 23rpx;
+  height: 23rpx;
 }
 
 .record-icon-edit {
   border: 1rpx solid rgba(182, 204, 244, 0.92);
-  background: linear-gradient(180deg, rgba(241, 247, 255, 0.98) 0%, rgba(232, 241, 255, 0.96) 100%);
-  box-shadow: 0 8rpx 18rpx rgba(177, 197, 233, 0.18);
+  background: rgba(241, 247, 255, 0.7);
+  box-shadow: none;
 }
 
 .record-icon-delete {
   border: 1rpx solid rgba(247, 210, 195, 0.94);
-  background: linear-gradient(180deg, rgba(255, 245, 240, 0.98) 0%, rgba(255, 237, 230, 0.96) 100%);
-  box-shadow: 0 8rpx 18rpx rgba(232, 188, 171, 0.18);
+  background: rgba(255, 245, 240, 0.7);
+  box-shadow: none;
 }
 
 @keyframes popupShellFadeIn {

@@ -35,13 +35,22 @@
   min-width: 0;
 }
 
+.growth-entry-inline-title,
 .growth-entry-inline-desc {
   display: block;
 }
 
+.growth-entry-inline-title {
+  margin-bottom: 8rpx;
+  font-size: 24rpx;
+  line-height: 1.45;
+  font-weight: 700;
+  color: #6f7f91;
+}
+
 .growth-entry-inline-desc {
   font-size: 24rpx;
-  line-height: 1.7;
+  line-height: 1.65;
   color: #7b8a9d;
 }
 

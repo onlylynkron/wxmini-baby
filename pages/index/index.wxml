@@ -1,7 +1,10 @@
 <view class="page {{editingId ? 'page-editing' : ''}}">
   <view class="hero-card">
     <view class="hero-text">
-      <text class="hero-title">{{babyProfile.name || '我的宝宝'}}</text>
+      <view class="hero-title-row">
+        <text class="hero-title">{{babyProfile.name || '我的宝宝'}}</text>
+        <text wx:if="{{todayVitaminWarningText}}" class="hero-vitamin-warning">{{todayVitaminWarningText}}</text>
+      </view>
       <text class="hero-desc">{{ageHeroText}}</text>
     </view>
 
@@ -260,15 +263,36 @@
 
       <block wx:if="{{form.type === 'medicine'}}">
         <view class="field">
-          <text class="field-label">药名</text>
-          <input
-            class="input-field"
-            placeholder="例如 维生素D"
-            value="{{form.medicineName}}"
-            bindinput="handleMedicineNameInput"
-          />
+          <text class="field-label">类型</text>
+          <view class="segmented-options">
+            <view
+              wx:for="{{medicineOptions}}"
+              wx:key="id"
+              class="pill-option {{form.medicinePreset === item.id ? 'pill-option-active' : ''}}"
+              data-medicine-preset="{{item.id}}"
+              bindtap="handleMedicinePresetChange"
+            >
+              {{item.label}}
+            </view>
+          </view>
         </view>
-        <view class="field-row">
+
+        <view class="field">
+          <text class="field-label">药名</text>
+          <block wx:if="{{form.medicinePreset === 'other'}}">
+            <input
+              class="input-field"
+              placeholder="请输入药名"
+              value="{{form.medicineName}}"
+              bindinput="handleMedicineNameInput"
+            />
+          </block>
+          <view wx:else class="readonly-field">
+            <text>{{form.medicinePreset === 'vitamin-ad' ? '维生素AD' : '维生素D'}}</text>
+          </view>
+        </view>
+
+        <view wx:if="{{form.medicinePreset === 'other'}}" class="field-row">
           <view class="field">
             <text class="field-label">剂量</text>
             <input
@@ -441,35 +465,33 @@
         </view>
       </view>
 
-      <view wx:for="{{group.records}}" wx:key="id" wx:for-item="item" class="record-card">
-        <view class="record-top">
-          <view class="record-meta">
-            <view class="record-badge {{item.badgeClass}}">{{item.typeLabel}}</view>
-            <text class="record-time">{{item.displayTime}}</text>
-          </view>
-        </view>
-
-        <view class="record-body">
+      <view wx:for="{{group.records}}" wx:key="id" wx:for-item="item" class="record-card {{item.cardClass}}">
+        <view class="record-content">
+          <view class="record-dot {{item.badgeClass}}"></view>
           <view class="record-main">
-            <text class="record-title">{{item.title}}</text>
-            <text wx:if="{{item.subtitle}}" class="record-subtitle">{{item.subtitle}}</text>
-            <text wx:if="{{item.note}}" class="record-note">备注：{{item.note}}</text>
-          </view>
-
-          <view class="record-actions">
-            <view
-              class="record-icon-btn record-icon-edit"
-              data-id="{{item.id}}"
-              bindtap="handleEdit"
-            >
-              <image class="record-action-icon" src="/assets/icons/edit.svg" mode="aspectFit" />
+            <view class="record-primary-row">
+              <view class="record-badge {{item.badgeClass}}">{{item.typeLabel}}</view>
+              <text class="record-title">{{item.title}}</text>
+              <text class="record-time">{{item.displayTime}}</text>
             </view>
-            <view
-              class="record-icon-btn record-icon-delete"
-              data-id="{{item.id}}"
-              bindtap="handleDelete"
-            >
-              <image class="record-action-icon" src="/assets/icons/delete.svg" mode="aspectFit" />
+            <view class="record-secondary-row">
+              <text class="record-subtitle">{{item.note ? '备注：' + item.note : item.subtitle}}</text>
+              <view class="record-actions">
+                <view
+                  class="record-icon-btn record-icon-edit"
+                  data-id="{{item.id}}"
+                  bindtap="handleEdit"
+                >
+                  <image class="record-action-icon" src="/assets/icons/edit.svg" mode="aspectFit" />
+                </view>
+                <view
+                  class="record-icon-btn record-icon-delete"
+                  data-id="{{item.id}}"
+                  bindtap="handleDelete"
+                >
+                  <image class="record-action-icon" src="/assets/icons/delete.svg" mode="aspectFit" />
+                </view>
+              </view>
             </view>
           </view>
         </view>

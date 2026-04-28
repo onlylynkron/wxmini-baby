@@ -26,9 +26,8 @@
 
     <view wx:if="{{growthEntryCollapsed}}" class="growth-entry-inline">
       <view class="growth-entry-inline-main">
-        <text class="growth-entry-inline-desc">
-          最近记录：{{growthLatest.dateText}} · 身高 {{growthLatest.heightText}} · 体重 {{growthLatest.weightText}} · 头围 {{growthLatest.headText}}
-        </text>
+        <text class="growth-entry-inline-title">最近记录 · {{growthLatest.dateText}}</text>
+        <text class="growth-entry-inline-desc">身高 {{growthLatest.heightText}} · 体重 {{growthLatest.weightText}} · 头围 {{growthLatest.headText}}</text>
       </view>
       <button class="ghost-btn growth-entry-inline-btn" size="mini" bindtap="handleExpandGrowthEntry">新增</button>
     </view>

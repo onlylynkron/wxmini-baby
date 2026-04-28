@@ -8,7 +8,7 @@ const RECORD_TYPES = [
   { id: "temperature", label: "体温" },
 ];
 const RECORD_FILTER_OPTIONS = [{ id: "all", label: "全部" }, ...RECORD_TYPES];
-const RECORD_PAGE_SIZE = 20;
+const RECORD_PAGE_SIZE = 12;
 
 const FEEDING_METHODS = ["配方奶", "母乳", "瓶装奶", "其他"];
 const FEEDING_AMOUNT_OPTIONS = [
@@ -44,6 +44,11 @@ const DIAPER_RASH_OPTIONS = [
   { id: "no", label: "否" },
 ];
 const SLEEP_TYPES = ["白天小睡", "夜间睡眠"];
+const MEDICINE_OPTIONS = [
+  { id: "vitamin-d", label: "维生素D", requiresDosage: false },
+  { id: "vitamin-ad", label: "维生素AD", requiresDosage: false },
+  { id: "other", label: "其他", requiresDosage: true },
+];
 const MEDICINE_UNITS = ["ml", "滴", "粒", "包", "次"];
 const TEMPERATURE_METHODS = ["腋温", "耳温", "额温"];
 const PREFERRED_FEEDING_METHOD_KEY = "baby-care-preferred-feeding-method";
@@ -377,6 +382,7 @@ function createDefaultForm() {
     diaperRash: "",
     sleepType: SLEEP_TYPES[0],
     durationMinutes: "",
+    medicinePreset: MEDICINE_OPTIONS[0].id,
     medicineName: "",
     dosage: "",
     doseUnit: MEDICINE_UNITS[0],
@@ -386,6 +392,43 @@ function createDefaultForm() {
     weight: "",
     headCircumference: "",
   };
+}
+
+function normalizeMedicinePreset(medicineName) {
+  const name = String(medicineName || "").trim().toLowerCase();
+
+  if (name === "维生素d" || name === "vd" || name === "vitamin d") {
+    return "vitamin-d";
+  }
+
+  if (name === "维生素ad" || name === "ad" || name === "vitamin ad") {
+    return "vitamin-ad";
+  }
+
+  return "other";
+}
+
+function getMedicineOption(optionId) {
+  return MEDICINE_OPTIONS.find((item) => item.id === optionId) || MEDICINE_OPTIONS[0];
+}
+
+function getMedicineNameByPreset(optionId, customName) {
+  const option = getMedicineOption(optionId);
+
+  if (!option.requiresDosage) {
+    return option.label;
+  }
+
+  return String(customName || "").trim();
+}
+
+function isDailyVitaminMedicine(record) {
+  if (!record || record.type !== "medicine") {
+    return false;
+  }
+
+  const preset = normalizeMedicinePreset(record.medicineName);
+  return preset === "vitamin-d" || preset === "vitamin-ad";
 }
 
 function createSummary() {
@@ -1032,6 +1075,14 @@ function buildRecordGroups(filteredRecords, allRecords) {
     .map((dateKey) => groupMap[dateKey]);
 }
 
+function buildTodayVitaminWarning(records, todayDate) {
+  const hasDailyVitamin = (records || []).some(
+    (record) => record.date === todayDate && isDailyVitaminMedicine(record)
+  );
+
+  return hasDailyVitamin ? "" : "今日未吃AD/维生素D";
+}
+
 function buildFormFromRecord(record) {
   const normalizedRecord = normalizeIncomingRecord(record);
   return {
@@ -1053,7 +1104,11 @@ function buildFormFromRecord(record) {
       normalizedRecord.durationMinutes !== undefined && normalizedRecord.durationMinutes !== null
         ? String(normalizedRecord.durationMinutes)
         : "",
-    medicineName: normalizedRecord.medicineName || "",
+    medicinePreset: normalizeMedicinePreset(normalizedRecord.medicineName),
+    medicineName:
+      normalizeMedicinePreset(normalizedRecord.medicineName) === "other"
+        ? normalizedRecord.medicineName || ""
+        : "",
     dosage:
       normalizedRecord.dosage !== undefined && normalizedRecord.dosage !== null
         ? String(normalizedRecord.dosage)
@@ -1091,6 +1146,7 @@ function buildRecordView(record) {
         ...baseRecord,
         typeLabel: "喝奶",
         badgeClass: "record-badge-feeding",
+        cardClass: "record-card-feeding",
         title: `${normalizeFeedingMethod(record.method)} · ${formatFeedingMetric(record.amount, record.method)}`,
         subtitle: "喂养记录",
       };
@@ -1099,6 +1155,7 @@ function buildRecordView(record) {
         ...baseRecord,
         typeLabel: "尿布",
         badgeClass: "record-badge-diaper",
+        cardClass: "record-card-diaper",
         title: buildDiaperDetailText(record),
         subtitle: "排泄记录",
       };
@@ -1108,6 +1165,7 @@ function buildRecordView(record) {
         ...baseRecord,
         typeLabel: "睡眠",
         badgeClass: "record-badge-sleep",
+        cardClass: "record-card-sleep",
         title: `${record.sleepType} · ${formatMetric(record.durationMinutes, " 分钟")}`,
         subtitle: "睡眠记录",
       };
@@ -1116,7 +1174,10 @@ function buildRecordView(record) {
         ...baseRecord,
         typeLabel: "喂药",
         badgeClass: "record-badge-medicine",
-        title: `${record.medicineName} · ${formatMetric(record.dosage, record.doseUnit || "")}`,
+        cardClass: "record-card-medicine",
+        title: record.dosage
+          ? `${record.medicineName} · ${formatMetric(record.dosage, record.doseUnit || "")}`
+          : record.medicineName,
         subtitle: "用药记录",
       };
     case "temperature":
@@ -1124,6 +1185,7 @@ function buildRecordView(record) {
         ...baseRecord,
         typeLabel: "体温",
         badgeClass: "record-badge-temperature",
+        cardClass: "record-card-temperature",
         title: `${formatMetric(record.temperature, "℃")}`,
         subtitle: `测量方式：${record.temperatureMethod || "未填写"}`,
       };
@@ -1143,6 +1205,7 @@ function buildRecordView(record) {
         ...baseRecord,
         typeLabel: "成长",
         badgeClass: "record-badge-growth",
+        cardClass: "record-card-growth",
         title: parts.join(" · ") || "成长记录",
         subtitle: "身高、体重、头围",
       };
@@ -1152,6 +1215,7 @@ function buildRecordView(record) {
         ...baseRecord,
         typeLabel: getRecordTypeMeta(record.type).label,
         badgeClass: "record-badge-default",
+        cardClass: "record-card-default",
         title: getRecordTypeMeta(record.type).label,
         subtitle: "",
       };
@@ -1202,6 +1266,7 @@ Page({
     poopShapes: POOP_SHAPES,
     diaperRashOptions: DIAPER_RASH_OPTIONS,
     sleepTypes: SLEEP_TYPES,
+    medicineOptions: MEDICINE_OPTIONS,
     medicineUnits: MEDICINE_UNITS,
     temperatureMethods: TEMPERATURE_METHODS,
     poopColors: POOP_COLORS,
@@ -1246,6 +1311,7 @@ Page({
     ageShortText: "未设置",
     ageDetailText: "设置出生日期后会自动计算月龄和周岁。",
     ageHeroText: "设置出生日期后会自动计算总天数和月龄。",
+    todayVitaminWarningText: "",
     memberSummaryText: "1位成员",
     currentUserRole: "owner",
     canManageMembers: false,
@@ -1291,6 +1357,15 @@ Page({
 
   async syncDashboard() {
     if (this.isSyncingDashboard) {
+      return;
+    }
+
+    if (
+      !this.pendingInviteCode &&
+      this.lastDashboardSyncAt &&
+      Date.now() - this.lastDashboardSyncAt < 5000
+    ) {
+      this.refreshRealtimeContent();
       return;
     }
 
@@ -1374,6 +1449,7 @@ Page({
     const ageInfo = getAgeInfo(babyProfile.birthDate);
     const heroStats = buildHeroStats(todaySummary);
     const memberList = buildMemberList(members, canManageMembers);
+    const todayVitaminWarningText = buildTodayVitaminWarning(allRecords, this.data.todayDate);
 
     this.setData({
       babyProfile,
@@ -1391,6 +1467,7 @@ Page({
       ageShortText: ageInfo.shortText,
       ageDetailText: ageInfo.detailText,
       ageHeroText: ageInfo.heroText,
+      todayVitaminWarningText,
       memberSummaryText: buildMemberSummary(members),
       currentUserRole,
       canManageMembers,
@@ -1409,6 +1486,7 @@ Page({
     try {
       const state = await babyService.bootstrap();
       this.applyState(state);
+      this.lastDashboardSyncAt = Date.now();
     } catch (error) {
       wx.showToast({
         title: error.message || "数据加载失败",
@@ -1651,8 +1729,11 @@ Page({
       nextForm.sleepType = SLEEP_TYPES[0];
     }
 
-    if (type === "medicine" && !nextForm.doseUnit) {
-      nextForm.doseUnit = MEDICINE_UNITS[0];
+    if (type === "medicine") {
+      nextForm.medicinePreset = nextForm.medicinePreset || MEDICINE_OPTIONS[0].id;
+      if (!nextForm.doseUnit) {
+        nextForm.doseUnit = MEDICINE_UNITS[0];
+      }
     }
 
     if (type === "temperature" && !nextForm.temperatureMethod) {
@@ -1775,6 +1856,18 @@ Page({
   handleMedicineNameInput(event) {
     this.setData({
       "form.medicineName": event.detail.value,
+    });
+  },
+
+  handleMedicinePresetChange(event) {
+    const medicinePreset = event.currentTarget.dataset.medicinePreset;
+    const option = getMedicineOption(medicinePreset);
+
+    this.setData({
+      "form.medicinePreset": option.id,
+      "form.medicineName": option.requiresDosage ? this.data.form.medicineName : "",
+      "form.dosage": option.requiresDosage ? this.data.form.dosage : "",
+      "form.doseUnit": option.requiresDosage ? this.data.form.doseUnit || MEDICINE_UNITS[0] : "",
     });
   },
 
@@ -1934,10 +2027,24 @@ Page({
         }
         return "";
       case "medicine":
-        if (!form.medicineName.trim()) {
+        if (isDailyVitaminMedicine({ type: "medicine", medicineName: getMedicineNameByPreset(form.medicinePreset) })) {
+          const hasDailyVitamin = this.data.allRecords.some((record) => {
+            if (record.id === this.data.editingId || record.date !== form.date || !isDailyVitaminMedicine(record)) {
+              return false;
+            }
+
+            return true;
+          });
+
+          if (hasDailyVitamin) {
+            return "维生素AD和维生素D每天只记录一个";
+          }
+        }
+
+        if (!getMedicineNameByPreset(form.medicinePreset, form.medicineName)) {
           return "请填写药名";
         }
-        if (!form.dosage) {
+        if (getMedicineOption(form.medicinePreset).requiresDosage && !form.dosage) {
           return "请填写剂量";
         }
         return "";
@@ -1985,9 +2092,10 @@ Page({
     }
 
     if (form.type === "medicine") {
-      record.medicineName = form.medicineName.trim();
-      record.dosage = form.dosage;
-      record.doseUnit = form.doseUnit;
+      const option = getMedicineOption(form.medicinePreset);
+      record.medicineName = getMedicineNameByPreset(option.id, form.medicineName);
+      record.dosage = option.requiresDosage ? form.dosage : "";
+      record.doseUnit = option.requiresDosage ? form.doseUnit : "";
     }
 
     if (form.type === "temperature") {
