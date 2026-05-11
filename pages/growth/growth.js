@@ -83,6 +83,31 @@ function sanitizeDecimal(value) {
   return `${parts[0]}.${parts.slice(1).join("")}`;
 }
 
+function isValidDecimal(value) {
+  const text = String(value || "").trim();
+  return !text || (/^\d+(\.\d+)?$/.test(text) && Number.isFinite(Number(text)));
+}
+
+function getGrowthFormError(growthForm) {
+  if (!growthForm.height && !growthForm.weight && !growthForm.headCircumference) {
+    return "请至少填写一个成长指标";
+  }
+
+  if (!isValidDecimal(growthForm.height)) {
+    return "身高格式不正确";
+  }
+
+  if (!isValidDecimal(growthForm.weight)) {
+    return "体重格式不正确";
+  }
+
+  if (!isValidDecimal(growthForm.headCircumference)) {
+    return "头围格式不正确";
+  }
+
+  return "";
+}
+
 function createDefaultGrowthForm() {
   return {
     date: formatDate(new Date()),
@@ -451,6 +476,7 @@ Page({
         }
       );
     } catch (error) {
+      console.error("[growth] load failed", error);
       wx.showToast({
         title: error.message || "数据加载失败",
         icon: "none",
@@ -724,6 +750,7 @@ Page({
         icon: "success",
       });
     } catch (error) {
+      console.error("[growth] save failed", error);
       wx.showToast({
         title: error.message || "删除失败",
         icon: "none",
@@ -736,10 +763,11 @@ Page({
   async handleSaveGrowth() {
     const growthForm = this.data.growthForm;
     const isEditing = Boolean(this.data.growthEditingId);
+    const errorMessage = getGrowthFormError(growthForm);
 
-    if (!growthForm.height && !growthForm.weight && !growthForm.headCircumference) {
+    if (errorMessage) {
       wx.showToast({
-        title: "请至少填写一个成长指标",
+        title: errorMessage,
         icon: "none",
       });
       return;
@@ -755,7 +783,7 @@ Page({
         (item) => item.id === this.data.growthEditingId
       );
 
-      await babyService.saveRecord({
+      const payload = {
         id: this.data.growthEditingId || "",
         type: "growth",
         date: growthForm.date,
@@ -765,6 +793,15 @@ Page({
         weight: growthForm.weight,
         headCircumference: growthForm.headCircumference,
         createdAt: currentRecord && currentRecord.createdAt ? currentRecord.createdAt : undefined,
+      };
+
+      console.log("[growth] save payload", payload);
+      const state = await babyService.saveRecord(payload);
+      const growthCount = (state.records || []).filter((record) => record.type === "growth").length;
+      console.log("[growth] save result", {
+        babyId: state.baby && state.baby.id,
+        totalRecords: (state.records || []).length,
+        growthCount,
       });
       await this.loadGrowthPage();
       saveGrowthEntryCollapseState(this.data.babyProfile.id, true);

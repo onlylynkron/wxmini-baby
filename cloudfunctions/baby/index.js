@@ -355,16 +355,31 @@ async function getMemberById(memberId) {
 }
 
 async function getRecordsByBabyId(babyId) {
-  const result = await db
-    .collection(COLLECTIONS.records)
-    .where({
-      babyId,
-    })
-    .orderBy("recordAt", "desc")
-    .limit(300)
-    .get();
+  const records = [];
+  const batchSize = 100;
+  let offset = 0;
 
-  return result.data.map((record) => normalizeDiaperRecord(mapDocument(record)));
+  while (true) {
+    const result = await db
+      .collection(COLLECTIONS.records)
+      .where({
+        babyId,
+      })
+      .orderBy("recordAt", "desc")
+      .skip(offset)
+      .limit(batchSize)
+      .get();
+
+    records.push(...result.data);
+
+    if (result.data.length < batchSize) {
+      break;
+    }
+
+    offset += batchSize;
+  }
+
+  return records.map((record) => normalizeDiaperRecord(mapDocument(record)));
 }
 
 async function buildDashboard(openId) {
@@ -392,6 +407,19 @@ async function buildDashboard(openId) {
   };
 }
 
+function toOptionalNumber(value, fieldName) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) {
+    throw new Error(`${fieldName}格式不正确`);
+  }
+
+  return numberValue;
+}
+
 function buildRecordPayload(record, babyId) {
   const timestamp = now();
   const recordAt = new Date(`${record.date}T${record.time}:00`).getTime();
@@ -403,30 +431,21 @@ function buildRecordPayload(record, babyId) {
     time: record.time,
     note: record.note || "",
     method: record.method || "",
-    amount: record.amount !== undefined && record.amount !== "" ? Number(record.amount) : null,
+    amount: toOptionalNumber(record.amount, "奶量"),
     diaperType: record.diaperType || "",
     poopColorId: record.poopColorId || "",
     poopShapeId: record.poopShapeId || "",
     diaperRash: record.diaperRash || "",
     sleepType: record.sleepType || "",
-    durationMinutes:
-      record.durationMinutes !== undefined && record.durationMinutes !== ""
-        ? Number(record.durationMinutes)
-        : null,
+    durationMinutes: toOptionalNumber(record.durationMinutes, "睡眠时长"),
     medicineName: record.medicineName || "",
-    dosage: record.dosage !== undefined && record.dosage !== "" ? Number(record.dosage) : null,
+    dosage: toOptionalNumber(record.dosage, "剂量"),
     doseUnit: record.doseUnit || "",
-    temperature:
-      record.temperature !== undefined && record.temperature !== ""
-        ? Number(record.temperature)
-        : null,
+    temperature: toOptionalNumber(record.temperature, "体温"),
     temperatureMethod: record.temperatureMethod || "",
-    height: record.height !== undefined && record.height !== "" ? Number(record.height) : null,
-    weight: record.weight !== undefined && record.weight !== "" ? Number(record.weight) : null,
-    headCircumference:
-      record.headCircumference !== undefined && record.headCircumference !== ""
-        ? Number(record.headCircumference)
-        : null,
+    height: toOptionalNumber(record.height, "身高"),
+    weight: toOptionalNumber(record.weight, "体重"),
+    headCircumference: toOptionalNumber(record.headCircumference, "头围"),
     recordAt: Number.isNaN(recordAt) ? timestamp : recordAt,
     updatedAt: timestamp,
   };
@@ -630,6 +649,12 @@ exports.main = async (event) => {
       data,
     };
   } catch (error) {
+    console.error("[baby] action failed", {
+      action: event.action,
+      openId,
+      message: error.message,
+      stack: error.stack,
+    });
     return {
       ok: false,
       message: error.message || "服务调用失败",

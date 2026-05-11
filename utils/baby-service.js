@@ -312,11 +312,19 @@ async function callCloud(action, data) {
       },
     });
   } catch (error) {
+    console.error("[baby-service] cloud call failed", {
+      action,
+      error,
+    });
     throw normalizeCloudError(error);
   }
 
   const payload = result.result || {};
   if (!payload.ok) {
+    console.error("[baby-service] cloud action failed", {
+      action,
+      payload,
+    });
     throw new Error(payload.message || "操作失败");
   }
 
