@@ -22,6 +22,10 @@
 - `baby_records`
 - `baby_users`
 
+## 性能建议
+
+- 为 `baby_records` 建议添加组合索引：`babyId` 升序、`recordAt` 降序。首页和成长页加载会按这个条件读取记录，缺少索引时记录多了会明显变慢。
+
 ## 主要文件
 
 - [config.js](D:/project/wx-mini-baby/config.js)

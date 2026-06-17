@@ -28,6 +28,41 @@ function now() {
   return Date.now();
 }
 
+const DASHBOARD_CACHE_TTL = 30 * 1000;
+let cachedDashboardState = null;
+let cachedDashboardAt = 0;
+let pendingBootstrapPromise = null;
+let cacheVersion = 0;
+
+function readCachedDashboardState(maxAge = DASHBOARD_CACHE_TTL) {
+  if (!cachedDashboardState) {
+    return null;
+  }
+
+  if (maxAge > 0 && now() - cachedDashboardAt > maxAge) {
+    return null;
+  }
+
+  return cachedDashboardState;
+}
+
+function writeCachedDashboardState(state) {
+  cachedDashboardState = state || null;
+  cachedDashboardAt = cachedDashboardState ? now() : 0;
+  return cachedDashboardState;
+}
+
+function writeFreshDashboardState(state) {
+  cacheVersion += 1;
+  return writeCachedDashboardState(state);
+}
+
+function clearCachedDashboardState() {
+  cacheVersion += 1;
+  cachedDashboardState = null;
+  cachedDashboardAt = 0;
+}
+
 function createLocalBaby() {
   const timestamp = now();
   return {
@@ -331,9 +366,34 @@ async function callCloud(action, data) {
   return payload.data;
 }
 
-async function bootstrap() {
+async function bootstrap(options = {}) {
   if (isCloudEnabled()) {
-    return callCloud("bootstrap");
+    const { forceRefresh = false, preferCache = false, maxAge = DASHBOARD_CACHE_TTL } = options;
+    const cachedState = !forceRefresh && preferCache ? readCachedDashboardState(maxAge) : null;
+
+    if (cachedState) {
+      return cachedState;
+    }
+
+    if (!forceRefresh && pendingBootstrapPromise) {
+      return pendingBootstrapPromise;
+    }
+
+    const requestVersion = cacheVersion;
+    pendingBootstrapPromise = callCloud("bootstrap")
+      .then((state) => {
+        if (requestVersion === cacheVersion) {
+          writeCachedDashboardState(state);
+          return state;
+        }
+
+        return cachedDashboardState || state;
+      })
+      .finally(() => {
+        pendingBootstrapPromise = null;
+      });
+
+    return pendingBootstrapPromise;
   }
 
   return buildStateResult(readLocalState());
@@ -341,7 +401,7 @@ async function bootstrap() {
 
 async function saveProfile(profile) {
   if (isCloudEnabled()) {
-    return callCloud("saveProfile", profile);
+    return callCloud("saveProfile", profile).then((state) => writeFreshDashboardState(state));
   }
 
   const state = readLocalState();
@@ -362,7 +422,7 @@ async function joinBaby(inviteCode) {
   if (isCloudEnabled()) {
     return callCloud("joinBaby", {
       inviteCode,
-    });
+    }).then((state) => writeFreshDashboardState(state));
   }
 
   throw new Error("本地模式不支持邀请协作，请先开启云开发。");
@@ -370,7 +430,7 @@ async function joinBaby(inviteCode) {
 
 async function saveRecord(record) {
   if (isCloudEnabled()) {
-    return callCloud("saveRecord", record);
+    return callCloud("saveRecord", record).then((state) => writeFreshDashboardState(state));
   }
 
   const state = readLocalState();
@@ -406,7 +466,7 @@ async function deleteRecord(recordId) {
   if (isCloudEnabled()) {
     return callCloud("deleteRecord", {
       recordId,
-    });
+    }).then((state) => writeFreshDashboardState(state));
   }
 
   const state = readLocalState();
@@ -420,7 +480,7 @@ async function deleteRecord(recordId) {
 
 async function clearAllRecords() {
   if (isCloudEnabled()) {
-    return callCloud("clearAllRecords");
+    return callCloud("clearAllRecords").then((state) => writeFreshDashboardState(state));
   }
 
   const state = readLocalState();
@@ -436,7 +496,7 @@ async function removeMember(memberId) {
   if (isCloudEnabled()) {
     return callCloud("removeMember", {
       memberId,
-    });
+    }).then((state) => writeFreshDashboardState(state));
   }
 
   throw new Error("当前模式不支持成员管理，请先开启云开发。");
@@ -444,7 +504,7 @@ async function removeMember(memberId) {
 
 async function leaveBaby() {
   if (isCloudEnabled()) {
-    return callCloud("leaveBaby");
+    return callCloud("leaveBaby").then((state) => writeFreshDashboardState(state));
   }
 
   throw new Error("当前模式不支持退出协作，请先开启云开发。");
@@ -453,6 +513,7 @@ async function leaveBaby() {
 module.exports = {
   bootstrap,
   clearAllRecords,
+  clearCachedDashboardState,
   deleteRecord,
   leaveBaby,
   joinBaby,

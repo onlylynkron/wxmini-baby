@@ -355,29 +355,30 @@ async function getMemberById(memberId) {
 }
 
 async function getRecordsByBabyId(babyId) {
-  const records = [];
   const batchSize = 100;
-  let offset = 0;
+  const query = db.collection(COLLECTIONS.records).where({
+    babyId,
+  });
+  const countResult = await query.count();
+  const total = countResult.total || 0;
 
-  while (true) {
-    const result = await db
-      .collection(COLLECTIONS.records)
-      .where({
-        babyId,
-      })
-      .orderBy("recordAt", "desc")
-      .skip(offset)
-      .limit(batchSize)
-      .get();
-
-    records.push(...result.data);
-
-    if (result.data.length < batchSize) {
-      break;
-    }
-
-    offset += batchSize;
+  if (!total) {
+    return [];
   }
+
+  const batchTasks = [];
+  for (let offset = 0; offset < total; offset += batchSize) {
+    batchTasks.push(
+      query
+        .orderBy("recordAt", "desc")
+        .skip(offset)
+        .limit(batchSize)
+        .get()
+    );
+  }
+
+  const batchResults = await Promise.all(batchTasks);
+  const records = batchResults.reduce((result, item) => result.concat(item.data || []), []);
 
   return records.map((record) => normalizeDiaperRecord(mapDocument(record)));
 }

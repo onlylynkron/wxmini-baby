@@ -1379,7 +1379,9 @@ Page({
         return;
       }
 
-      await this.loadDashboard();
+      await this.loadDashboard({
+        preferCache: true,
+      });
     } finally {
       this.isSyncingDashboard = false;
     }
@@ -1480,11 +1482,11 @@ Page({
     this.refreshLatestStatus(allRecords);
   },
 
-  async loadDashboard() {
+  async loadDashboard(options = {}) {
     wx.showNavigationBarLoading();
 
     try {
-      const state = await babyService.bootstrap();
+      const state = await babyService.bootstrap(options);
       this.applyState(state);
       this.lastDashboardSyncAt = Date.now();
     } catch (error) {
@@ -1530,7 +1532,9 @@ Page({
       });
 
       try {
-        const state = await babyService.bootstrap();
+        const state = await babyService.bootstrap({
+          forceRefresh: true,
+        });
         this.applyState(state);
       } catch (bootstrapError) {
         wx.showToast({

@@ -441,40 +441,46 @@ Page({
     };
   },
 
+  applyGrowthState(state) {
+    const babyProfile = state.baby || this.data.babyProfile;
+    const allRecords = state.records || [];
+    const growthRecords = getGrowthRecords(allRecords);
+    const growthLatest = buildGrowthLatest(growthRecords);
+    const ageInfo = getAgeInfo(babyProfile.birthDate);
+
+    this.setData(
+      {
+        babyProfile,
+        ageShortText: ageInfo.shortText,
+        ageDetailText: ageInfo.detailText,
+        ageHeroText: ageInfo.heroText,
+        growthForm: this.data.growthEditingId
+          ? this.data.growthForm
+          : createDefaultGrowthForm(),
+        growthLatest,
+        growthRecords: growthRecords.slice().reverse(),
+        growthHistoryRecords: buildGrowthHistoryRecords(growthRecords),
+        growthHeightChart: buildGrowthChart(growthRecords, "height", "cm"),
+        growthWeightChart: buildGrowthChart(growthRecords, "weight", "kg"),
+        growthHeadChart: buildGrowthChart(growthRecords, "headCircumference", "cm"),
+        growthStats: buildGrowthStats(growthLatest, growthRecords.length),
+        feedingChart: buildRecentFeedingChart(allRecords),
+        growthEntryCollapsed: isGrowthEntryCollapsed(babyProfile.id),
+      },
+      () => {
+        this.drawGrowthCharts();
+      }
+    );
+  },
+
   async loadGrowthPage() {
     wx.showNavigationBarLoading();
 
     try {
-      const state = await babyService.bootstrap();
-      const babyProfile = state.baby || this.data.babyProfile;
-      const allRecords = state.records || [];
-      const growthRecords = getGrowthRecords(allRecords);
-      const growthLatest = buildGrowthLatest(growthRecords);
-      const ageInfo = getAgeInfo(babyProfile.birthDate);
-
-      this.setData(
-        {
-          babyProfile,
-          ageShortText: ageInfo.shortText,
-          ageDetailText: ageInfo.detailText,
-          ageHeroText: ageInfo.heroText,
-          growthForm: this.data.growthEditingId
-            ? this.data.growthForm
-            : createDefaultGrowthForm(),
-          growthLatest,
-          growthRecords: growthRecords.slice().reverse(),
-          growthHistoryRecords: buildGrowthHistoryRecords(growthRecords),
-          growthHeightChart: buildGrowthChart(growthRecords, "height", "cm"),
-          growthWeightChart: buildGrowthChart(growthRecords, "weight", "kg"),
-          growthHeadChart: buildGrowthChart(growthRecords, "headCircumference", "cm"),
-          growthStats: buildGrowthStats(growthLatest, growthRecords.length),
-          feedingChart: buildRecentFeedingChart(allRecords),
-          growthEntryCollapsed: isGrowthEntryCollapsed(babyProfile.id),
-        },
-        () => {
-          this.drawGrowthCharts();
-        }
-      );
+      const state = await babyService.bootstrap({
+        preferCache: true,
+      });
+      this.applyGrowthState(state);
     } catch (error) {
       console.error("[growth] load failed", error);
       wx.showToast({
@@ -736,7 +742,7 @@ Page({
     });
 
     try {
-      await babyService.deleteRecord(id);
+      const state = await babyService.deleteRecord(id);
       if (id === this.data.growthEditingId) {
         this.setData({
           growthEditingId: "",
@@ -744,7 +750,7 @@ Page({
           growthEntryCollapsed: true,
         });
       }
-      await this.loadGrowthPage();
+      this.applyGrowthState(state);
       wx.showToast({
         title: "已删除",
         icon: "success",
@@ -803,8 +809,8 @@ Page({
         totalRecords: (state.records || []).length,
         growthCount,
       });
-      await this.loadGrowthPage();
-      saveGrowthEntryCollapseState(this.data.babyProfile.id, true);
+      this.applyGrowthState(state);
+      saveGrowthEntryCollapseState((state.baby && state.baby.id) || this.data.babyProfile.id, true);
       this.setData({
         growthEntryCollapsed: true,
         growthEditingId: "",
