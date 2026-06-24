@@ -1,8 +1,14 @@
 <view class="page">
   <view class="hero-card">
-    <view class="hero-text">
-      <text class="hero-title">{{babyProfile.name || '我的宝宝'}}</text>
-      <text class="hero-desc">{{ageHeroText}}</text>
+    <view class="hero-profile">
+      <view class="baby-avatar baby-avatar-hero {{babyProfile.avatarFileId ? 'baby-avatar-clickable' : ''}}" bindtap="handlePreviewAvatar">
+        <image wx:if="{{babyProfile.avatarFileId}}" class="baby-avatar-image" src="{{babyProfile.avatarFileId}}" mode="aspectFill" />
+        <text wx:else class="baby-avatar-fallback">{{avatarFallbackText}}</text>
+      </view>
+      <view class="hero-text">
+        <text class="hero-title">{{babyProfile.name || '我的宝宝'}}</text>
+        <text class="hero-desc">{{ageHeroText}}</text>
+      </view>
     </view>
 
     <view class="hero-stats">

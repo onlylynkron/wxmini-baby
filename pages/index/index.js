@@ -1,7 +1,7 @@
 const babyService = require("../../utils/baby-service");
 
 const RECORD_TYPES = [
-  { id: "feeding", label: "喝奶" },
+  { id: "feeding", label: "喂养" },
   { id: "diaper", label: "尿布" },
   { id: "sleep", label: "睡眠" },
   { id: "medicine", label: "喂药" },
@@ -10,7 +10,7 @@ const RECORD_TYPES = [
 const RECORD_FILTER_OPTIONS = [{ id: "all", label: "全部" }, ...RECORD_TYPES];
 const RECORD_PAGE_SIZE = 12;
 
-const FEEDING_METHODS = ["配方奶", "母乳", "瓶装奶", "其他"];
+const FEEDING_METHODS = ["配方奶", "母乳", "瓶装奶", "辅食", "其他"];
 const FEEDING_AMOUNT_OPTIONS = [
   { label: "30 ml", value: "30" },
   { label: "60 ml", value: "60" },
@@ -47,6 +47,7 @@ const SLEEP_TYPES = ["白天小睡", "夜间睡眠"];
 const MEDICINE_OPTIONS = [
   { id: "vitamin-d", label: "维生素D", requiresDosage: false },
   { id: "vitamin-ad", label: "维生素AD", requiresDosage: false },
+  { id: "iron", label: "铁剂", requiresDosage: false },
   { id: "other", label: "其他", requiresDosage: true },
 ];
 const MEDICINE_UNITS = ["ml", "滴", "粒", "包", "次"];
@@ -230,6 +231,14 @@ function isBreastfeedingMethod(method) {
   return normalizeFeedingMethod(method) === "母乳";
 }
 
+function isSolidFoodMethod(method) {
+  return normalizeFeedingMethod(method) === "辅食";
+}
+
+function shouldTrackFeedingAmount(method) {
+  return !isBreastfeedingMethod(method) && !isSolidFoodMethod(method);
+}
+
 function normalizeDiaperType(diaperType) {
   const value = String(diaperType || "").trim();
   return DIAPER_TYPES.includes(value) ? value : "";
@@ -363,6 +372,7 @@ function createDefaultProfile() {
     id: "",
     name: "我的宝宝",
     birthDate: "",
+    avatarFileId: "",
     inviteCode: "",
   };
 }
@@ -376,6 +386,7 @@ function createDefaultForm() {
     note: "",
     method: normalizeFeedingMethod(getPreferredFeedingMethod()),
     amount: "",
+    solidFood: "",
     diaperType: "",
     poopColorId: "",
     poopShapeId: "",
@@ -405,6 +416,10 @@ function normalizeMedicinePreset(medicineName) {
     return "vitamin-ad";
   }
 
+  if (name === "铁" || name === "铁剂" || name === "补铁" || name === "iron") {
+    return "iron";
+  }
+
   return "other";
 }
 
@@ -431,6 +446,14 @@ function isDailyVitaminMedicine(record) {
   return preset === "vitamin-d" || preset === "vitamin-ad";
 }
 
+function isDailyIronMedicine(record) {
+  if (!record || record.type !== "medicine") {
+    return false;
+  }
+
+  return normalizeMedicinePreset(record.medicineName) === "iron";
+}
+
 function createSummary() {
   return {
     feedingCount: 0,
@@ -454,10 +477,10 @@ function createDefaultStorageMeta() {
 function createLatestStatusCards() {
   return [
     {
-      label: "最后喝奶",
+      label: "最后喂养",
       timeText: "暂无记录",
       detailText: "",
-      relativeText: "还没有喝奶记录",
+      relativeText: "还没有喂养记录",
       cardClass: "latest-status-feeding",
       toneClass: "latest-status-tone-empty",
       badgeText: "",
@@ -478,6 +501,16 @@ function createLatestStatusCards() {
 
 function formatFeedingMetric(value, method) {
   return formatMetric(value, isBreastfeedingMethod(method) ? " 分钟" : " ml");
+}
+
+function formatFeedingDetail(record) {
+  const method = normalizeFeedingMethod(record.method);
+
+  if (isSolidFoodMethod(method)) {
+    return record.solidFood ? `${method} · ${record.solidFood}` : method;
+  }
+
+  return `${method} · ${formatFeedingMetric(record.amount, method)}`;
 }
 
 function getAgeInfo(birthDate) {
@@ -866,15 +899,10 @@ function buildLatestStatusCards(records) {
 
   return [
     buildLatestStatusCard(
-      "最后喝奶",
+      "最后喂养",
       feedingRecord,
-      feedingRecord
-        ? `${normalizeFeedingMethod(feedingRecord.method)} · ${formatFeedingMetric(
-            feedingRecord.amount,
-            feedingRecord.method
-          )}`
-        : "",
-      "还没有喝奶记录",
+      feedingRecord ? formatFeedingDetail(feedingRecord) : "",
+      "还没有喂养记录",
       "latest-status-feeding"
     ),
     buildLatestStatusCard(
@@ -908,7 +936,7 @@ function formatMetric(value, unit) {
 
 function buildHeroStats(summary) {
   return [
-    { label: "喝奶", value: `${summary.feedingCount} 次`, cardClass: "hero-stat-feeding" },
+    { label: "喂养", value: `${summary.feedingCount} 次`, cardClass: "hero-stat-feeding" },
     { label: "奶量", value: `${summary.totalAmount} ml`, cardClass: "hero-stat-amount" },
     { label: "尿布", value: `${summary.diaperCount} 次`, cardClass: "hero-stat-diaper" },
     { label: "睡眠", value: `${summary.sleepMinutes} 分钟`, cardClass: "hero-stat-sleep" },
@@ -917,7 +945,7 @@ function buildHeroStats(summary) {
 
 function buildFilterStats(summary) {
   return [
-    { label: "喝奶", value: `${summary.feedingCount} 次` },
+    { label: "喂养", value: `${summary.feedingCount} 次` },
     { label: "尿布", value: `${summary.diaperCount} 次` },
     { label: "睡眠", value: `${summary.sleepMinutes} 分钟` },
     { label: "喂药", value: `${summary.medicineCount} 次` },
@@ -936,7 +964,7 @@ function getSummary(records, targetDate) {
     switch (record.type) {
       case "feeding":
         summary.feedingCount += 1;
-        if (!isBreastfeedingMethod(record.method)) {
+        if (shouldTrackFeedingAmount(record.method)) {
           summary.totalAmount += Number(record.amount || 0);
         }
         break;
@@ -1083,6 +1111,19 @@ function buildTodayVitaminWarning(records, todayDate) {
   return hasDailyVitamin ? "" : "今日未吃AD/维生素D";
 }
 
+function getAvatarFallbackText(name) {
+  const text = String(name || "").trim();
+  return text ? text.slice(0, 1) : "宝";
+}
+
+function buildTodayIronWarning(records, todayDate) {
+  const hasDailyIron = (records || []).some(
+    (record) => record.date === todayDate && isDailyIronMedicine(record)
+  );
+
+  return hasDailyIron ? "" : "今日未吃铁剂";
+}
+
 function buildFormFromRecord(record) {
   const normalizedRecord = normalizeIncomingRecord(record);
   return {
@@ -1095,6 +1136,7 @@ function buildFormFromRecord(record) {
       normalizedRecord.amount !== undefined && normalizedRecord.amount !== null
         ? String(normalizedRecord.amount)
         : "",
+    solidFood: normalizedRecord.solidFood || "",
     diaperType: normalizedRecord.diaperType || "",
     poopColorId: normalizedRecord.poopColorId || "",
     poopShapeId: normalizedRecord.poopShapeId || "",
@@ -1144,10 +1186,10 @@ function buildRecordView(record) {
     case "feeding":
       return {
         ...baseRecord,
-        typeLabel: "喝奶",
+        typeLabel: "喂养",
         badgeClass: "record-badge-feeding",
         cardClass: "record-card-feeding",
-        title: `${normalizeFeedingMethod(record.method)} · ${formatFeedingMetric(record.amount, record.method)}`,
+        title: formatFeedingDetail(record),
         subtitle: "喂养记录",
       };
     case "diaper": {
@@ -1274,7 +1316,9 @@ Page({
     profileForm: {
       name: "我的宝宝",
       birthDate: "",
+      avatarFileId: "",
     },
+    avatarFallbackText: "宝",
     profileCollapsed: false,
     collaborationCollapsed: false,
     members: [],
@@ -1312,6 +1356,7 @@ Page({
     ageDetailText: "设置出生日期后会自动计算月龄和周岁。",
     ageHeroText: "设置出生日期后会自动计算总天数和月龄。",
     todayVitaminWarningText: "",
+    todayIronWarningText: "",
     memberSummaryText: "1位成员",
     currentUserRole: "owner",
     canManageMembers: false,
@@ -1357,15 +1402,6 @@ Page({
 
   async syncDashboard() {
     if (this.isSyncingDashboard) {
-      return;
-    }
-
-    if (
-      !this.pendingInviteCode &&
-      this.lastDashboardSyncAt &&
-      Date.now() - this.lastDashboardSyncAt < 5000
-    ) {
-      this.refreshRealtimeContent();
       return;
     }
 
@@ -1452,12 +1488,15 @@ Page({
     const heroStats = buildHeroStats(todaySummary);
     const memberList = buildMemberList(members, canManageMembers);
     const todayVitaminWarningText = buildTodayVitaminWarning(allRecords, this.data.todayDate);
+    const todayIronWarningText = buildTodayIronWarning(allRecords, this.data.todayDate);
 
     this.setData({
       babyProfile,
+      avatarFallbackText: getAvatarFallbackText(babyProfile.name),
       profileForm: {
         name: babyProfile.name || "我的宝宝",
         birthDate: babyProfile.birthDate || "",
+        avatarFileId: babyProfile.avatarFileId || "",
       },
       profileCollapsed: isProfileCollapsed(babyProfile.id),
       collaborationCollapsed: isCollaborationCollapsed(babyProfile.id),
@@ -1470,6 +1509,7 @@ Page({
       ageDetailText: ageInfo.detailText,
       ageHeroText: ageInfo.heroText,
       todayVitaminWarningText,
+      todayIronWarningText,
       memberSummaryText: buildMemberSummary(members),
       currentUserRole,
       canManageMembers,
@@ -1651,6 +1691,19 @@ Page({
     });
   },
 
+  handlePreviewAvatar() {
+    const avatarFileId = this.data.babyProfile.avatarFileId;
+
+    if (!avatarFileId) {
+      return;
+    }
+
+    wx.previewImage({
+      current: avatarFileId,
+      urls: [avatarFileId],
+    });
+  },
+
   handleExpandProfile() {
     this.setProfileCollapsed(false);
   },
@@ -1699,6 +1752,7 @@ Page({
       const state = await babyService.saveProfile({
         name: profileForm.name.trim() || "我的宝宝",
         birthDate: profileForm.birthDate,
+        avatarFileId: profileForm.avatarFileId,
       });
       this.applyState(state);
       this.setProfileCollapsed(true, state.baby && state.baby.id);
@@ -1778,8 +1832,12 @@ Page({
   handleFeedingMethodChange(event) {
     const method = normalizeFeedingMethod(event.currentTarget.dataset.method);
     const currentMethod = this.data.form.method;
+    const shouldKeepAmount =
+      isBreastfeedingMethod(currentMethod) === isBreastfeedingMethod(method) &&
+      !isSolidFoodMethod(currentMethod) &&
+      !isSolidFoodMethod(method);
     const nextAmount =
-      isBreastfeedingMethod(currentMethod) === isBreastfeedingMethod(method)
+      shouldKeepAmount
         ? this.data.form.amount
         : "";
 
@@ -1787,6 +1845,7 @@ Page({
     this.setData({
       "form.method": method,
       "form.amount": nextAmount,
+      "form.solidFood": isSolidFoodMethod(method) ? this.data.form.solidFood : "",
       amountPickerIndex: getAmountPickerIndex(nextAmount, method),
     });
   },
@@ -1796,6 +1855,12 @@ Page({
     this.setData({
       "form.amount": amount,
       amountPickerIndex: getAmountPickerIndex(amount, this.data.form.method),
+    });
+  },
+
+  handleSolidFoodInput(event) {
+    this.setData({
+      "form.solidFood": event.detail.value,
     });
   },
 
@@ -2019,6 +2084,13 @@ Page({
   validateForm(form) {
     switch (form.type) {
       case "feeding":
+        if (isSolidFoodMethod(form.method)) {
+          if (!String(form.solidFood || "").trim()) {
+            return "请填写吃了什么";
+          }
+          return "";
+        }
+
         if (!form.amount) {
           return isBreastfeedingMethod(form.method) ? "请填写喂养时长" : "请填写奶量";
         }
@@ -2079,7 +2151,8 @@ Page({
 
     if (form.type === "feeding") {
       record.method = normalizeFeedingMethod(form.method);
-      record.amount = form.amount;
+      record.amount = isSolidFoodMethod(record.method) ? "" : form.amount;
+      record.solidFood = isSolidFoodMethod(record.method) ? form.solidFood.trim() : "";
       savePreferredFeedingMethod(record.method);
     }
 

@@ -1,8 +1,14 @@
 <view class="page">
   <view class="hero-card">
-    <view class="hero-text">
-      <text class="hero-title">{{babyProfile.name || '我的宝宝'}}</text>
-      <text class="hero-desc">{{ageHeroText}}</text>
+    <view class="hero-profile">
+      <view class="baby-avatar baby-avatar-hero {{babyProfile.avatarFileId ? 'baby-avatar-clickable' : ''}}" bindtap="handlePreviewAvatar">
+        <image wx:if="{{babyProfile.avatarFileId}}" class="baby-avatar-image" src="{{babyProfile.avatarFileId}}" mode="aspectFill" />
+        <text wx:else class="baby-avatar-fallback">{{avatarFallbackText}}</text>
+      </view>
+      <view class="hero-text">
+        <text class="hero-title">{{babyProfile.name || '我的宝宝'}}</text>
+        <text class="hero-desc">{{ageHeroText}}</text>
+      </view>
     </view>
 
     <view class="hero-stats">
@@ -20,6 +26,10 @@
     </view>
 
     <view wx:if="{{profileCollapsed}}" class="profile-summary-card">
+      <view class="baby-avatar profile-summary-avatar {{babyProfile.avatarFileId ? 'baby-avatar-clickable' : ''}}" bindtap="handlePreviewAvatar">
+        <image wx:if="{{babyProfile.avatarFileId}}" class="baby-avatar-image" src="{{babyProfile.avatarFileId}}" mode="aspectFill" />
+        <text wx:else class="baby-avatar-fallback">{{avatarFallbackText}}</text>
+      </view>
       <view class="profile-summary-main">
         <text class="profile-summary-name">{{babyProfile.name || '我的宝宝'}}</text>
         <text class="profile-summary-desc">
@@ -32,6 +42,18 @@
     </view>
     <block wx:else>
       <block wx:if="{{canEditProfile}}">
+        <view class="avatar-editor">
+          <view class="baby-avatar avatar-editor-preview {{profileForm.avatarFileId ? 'baby-avatar-clickable' : ''}}" bindtap="handlePreviewAvatar">
+            <image wx:if="{{profileForm.avatarFileId}}" class="baby-avatar-image" src="{{profileForm.avatarFileId}}" mode="aspectFill" />
+            <text wx:else class="baby-avatar-fallback">{{avatarFallbackText}}</text>
+          </view>
+          <view class="avatar-editor-main">
+            <text class="avatar-editor-title">宝宝头像</text>
+            <text class="avatar-editor-desc">选择照片后可裁剪头像区域，再上传到云存储。</text>
+            <button class="ghost-btn avatar-editor-btn" size="mini" bindtap="handleChooseAvatar">更换头像</button>
+          </view>
+        </view>
+
         <view class="field">
           <text class="field-label">宝宝昵称</text>
           <input
@@ -60,6 +82,14 @@
         <button class="secondary-btn" bindtap="handleCollapseProfile">收起资料</button>
       </block>
       <block wx:else>
+        <view class="info-card avatar-view-card">
+          <text class="info-card-title">宝宝头像</text>
+          <view class="baby-avatar avatar-view-preview {{babyProfile.avatarFileId ? 'baby-avatar-clickable' : ''}}" bindtap="handlePreviewAvatar">
+            <image wx:if="{{babyProfile.avatarFileId}}" class="baby-avatar-image" src="{{babyProfile.avatarFileId}}" mode="aspectFill" />
+            <text wx:else class="baby-avatar-fallback">{{avatarFallbackText}}</text>
+          </view>
+        </view>
+
         <view class="info-card">
           <text class="info-card-title">宝宝昵称</text>
           <text class="info-card-desc">{{babyProfile.name || '我的宝宝'}}</text>

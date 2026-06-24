@@ -8,6 +8,7 @@ const db = cloud.database();
 
 const COLLECTIONS = {
   babies: "baby_profiles",
+  diaries: "baby_diaries",
   members: "baby_members",
   records: "baby_records",
   users: "baby_users",
@@ -205,6 +206,7 @@ async function createDefaultBaby(openId) {
     data: {
       name: "我的宝宝",
       birthDate: "",
+      avatarFileId: "",
       inviteCode,
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -248,6 +250,7 @@ async function migrateLegacyRecords(openId, babyId) {
           babyId,
           method: record.method || "",
           amount: record.amount !== undefined ? record.amount : null,
+          solidFood: record.solidFood || "",
           diaperType: record.diaperType || "",
           poopColorId: record.poopColorId || "",
           poopShapeId: record.poopShapeId || "",
@@ -383,6 +386,19 @@ async function getRecordsByBabyId(babyId) {
   return records.map((record) => normalizeDiaperRecord(mapDocument(record)));
 }
 
+async function getDiariesByBabyId(babyId) {
+  const result = await db
+    .collection(COLLECTIONS.diaries)
+    .where({
+      babyId,
+    })
+    .orderBy("date", "desc")
+    .orderBy("updatedAt", "desc")
+    .get();
+
+  return result.data.map(mapDocument);
+}
+
 async function buildDashboard(openId) {
   const activeBabyId = await ensureActiveBabyId(openId);
   const currentMember = await ensureMembership(openId, activeBabyId);
@@ -433,6 +449,7 @@ function buildRecordPayload(record, babyId) {
     note: record.note || "",
     method: record.method || "",
     amount: toOptionalNumber(record.amount, "奶量"),
+    solidFood: record.solidFood || "",
     diaperType: record.diaperType || "",
     poopColorId: record.poopColorId || "",
     poopShapeId: record.poopShapeId || "",
@@ -452,6 +469,28 @@ function buildRecordPayload(record, babyId) {
   };
 }
 
+function buildDiaryPayload(diary, babyId) {
+  const date = String(diary.date || "").trim();
+  const title = String(diary.title || "").trim();
+  const content = String(diary.content || "").trim();
+
+  if (!date) {
+    throw new Error("请选择日记日期");
+  }
+
+  if (!title && !content) {
+    throw new Error("请填写日记内容");
+  }
+
+  return {
+    babyId,
+    date,
+    title,
+    content,
+    updatedAt: now(),
+  };
+}
+
 async function handleSaveProfile(openId, data) {
   const activeBabyId = await ensureActiveBabyId(openId);
   const currentMember = await ensureMembership(openId, activeBabyId);
@@ -464,6 +503,7 @@ async function handleSaveProfile(openId, data) {
     data: {
       name: data.name || "我的宝宝",
       birthDate: data.birthDate || "",
+      avatarFileId: data.avatarFileId || "",
       updatedAt: now(),
     },
   });
@@ -540,6 +580,55 @@ async function handleDeleteRecord(openId, data) {
 
   await db.collection(COLLECTIONS.records).doc(data.recordId).remove();
   return buildDashboard(openId);
+}
+
+async function handleGetDiaries(openId) {
+  const activeBabyId = await ensureActiveBabyId(openId);
+  await ensureMembership(openId, activeBabyId);
+  return getDiariesByBabyId(activeBabyId);
+}
+
+async function handleSaveDiary(openId, data) {
+  const activeBabyId = await ensureActiveBabyId(openId);
+  await ensureMembership(openId, activeBabyId);
+
+  const payload = buildDiaryPayload(data || {}, activeBabyId);
+
+  if (data.id) {
+    const diaryResult = await db.collection(COLLECTIONS.diaries).doc(data.id).get();
+    if (!diaryResult.data || diaryResult.data.babyId !== activeBabyId) {
+      throw new Error("日记不存在或无权修改");
+    }
+
+    await db.collection(COLLECTIONS.diaries).doc(data.id).update({
+      data: {
+        ...payload,
+        createdAt: diaryResult.data.createdAt || now(),
+      },
+    });
+  } else {
+    await db.collection(COLLECTIONS.diaries).add({
+      data: {
+        ...payload,
+        createdAt: now(),
+      },
+    });
+  }
+
+  return getDiariesByBabyId(activeBabyId);
+}
+
+async function handleDeleteDiary(openId, data) {
+  const activeBabyId = await ensureActiveBabyId(openId);
+  await ensureMembership(openId, activeBabyId);
+
+  const diaryResult = await db.collection(COLLECTIONS.diaries).doc(data.diaryId).get();
+  if (!diaryResult.data || diaryResult.data.babyId !== activeBabyId) {
+    throw new Error("日记不存在或无权删除");
+  }
+
+  await db.collection(COLLECTIONS.diaries).doc(data.diaryId).remove();
+  return getDiariesByBabyId(activeBabyId);
 }
 
 async function clearRecordsByBabyId(babyId) {
@@ -631,6 +720,15 @@ exports.main = async (event) => {
         break;
       case "deleteRecord":
         data = await handleDeleteRecord(openId, event.data || {});
+        break;
+      case "getDiaries":
+        data = await handleGetDiaries(openId);
+        break;
+      case "saveDiary":
+        data = await handleSaveDiary(openId, event.data || {});
+        break;
+      case "deleteDiary":
+        data = await handleDeleteDiary(openId, event.data || {});
         break;
       case "clearAllRecords":
         data = await handleClearAllRecords(openId);

@@ -29,10 +29,48 @@ function now() {
 }
 
 const DASHBOARD_CACHE_TTL = 30 * 1000;
+const AVATAR_CACHE_STORAGE_KEY = "baby-care-avatar-cache";
 let cachedDashboardState = null;
 let cachedDashboardAt = 0;
 let pendingBootstrapPromise = null;
 let cacheVersion = 0;
+
+function readAvatarCache() {
+  const cache = wx.getStorageSync(AVATAR_CACHE_STORAGE_KEY);
+  return cache && typeof cache === "object" ? cache : {};
+}
+
+function writeAvatarCache(cache) {
+  wx.setStorageSync(AVATAR_CACHE_STORAGE_KEY, cache || {});
+}
+
+function cacheBabyAvatar(babyId, avatarFileId) {
+  if (!babyId) {
+    return;
+  }
+
+  const cache = readAvatarCache();
+  if (avatarFileId) {
+    cache[babyId] = avatarFileId;
+  } else {
+    delete cache[babyId];
+  }
+  writeAvatarCache(cache);
+}
+
+function applyCachedBabyAvatar(baby) {
+  if (!baby || baby.avatarFileId) {
+    return baby;
+  }
+
+  const avatarFileId = readAvatarCache()[baby.id];
+  return avatarFileId
+    ? {
+        ...baby,
+        avatarFileId,
+      }
+    : baby;
+}
 
 function readCachedDashboardState(maxAge = DASHBOARD_CACHE_TTL) {
   if (!cachedDashboardState) {
@@ -47,7 +85,16 @@ function readCachedDashboardState(maxAge = DASHBOARD_CACHE_TTL) {
 }
 
 function writeCachedDashboardState(state) {
-  cachedDashboardState = state || null;
+  if (state && state.baby) {
+    cacheBabyAvatar(state.baby.id, state.baby.avatarFileId || "");
+  }
+
+  cachedDashboardState = state
+    ? {
+        ...state,
+        baby: applyCachedBabyAvatar(state.baby),
+      }
+    : null;
   cachedDashboardAt = cachedDashboardState ? now() : 0;
   return cachedDashboardState;
 }
@@ -69,6 +116,7 @@ function createLocalBaby() {
     id: "local-baby",
     name: "我的宝宝",
     birthDate: "",
+    avatarFileId: "",
     inviteCode: "LOCAL",
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -88,6 +136,7 @@ function createLocalState() {
       },
     ],
     records: [],
+    diaries: [],
   };
 }
 
@@ -120,6 +169,7 @@ function migrateLegacyLocalState() {
   const nextState = {
     ...state,
     records,
+    diaries: [],
   };
 
   wx.removeStorageSync("baby-care-records");
@@ -220,6 +270,7 @@ function normalizeRecord(record, babyId) {
     method: record.method || "",
     note: record.note || "",
     amount: record.amount !== undefined && record.amount !== null ? String(record.amount) : "",
+    solidFood: record.solidFood || "",
     diaperType: record.diaperType || "",
     poopColorId: record.poopColorId || "",
     poopShapeId: normalizePoopShapeId(record.poopShapeId),
@@ -255,6 +306,7 @@ function readLocalState() {
     baby: state.baby,
     members: state.members || [],
     records: sortRecords((state.records || []).map((record) => normalizeRecord(record, state.baby.id))),
+    diaries: sortDiaries((state.diaries || []).map((diary) => normalizeDiary(diary, state.baby.id))),
   };
 }
 
@@ -263,6 +315,7 @@ function writeLocalState(state) {
     baby: state.baby,
     members: state.members || [],
     records: sortRecords(state.records || []),
+    diaries: sortDiaries(state.diaries || []),
   };
 
   wx.setStorageSync(getLocalStateKey(), nextState);
@@ -288,8 +341,10 @@ function buildStorageMeta() {
 }
 
 function buildStateResult(state) {
+  const baby = applyCachedBabyAvatar(state.baby);
+
   return {
-    baby: state.baby,
+    baby,
     members: (state.members || []).map((member, index) => ({
       ...member,
       role: member.role || "manager",
@@ -298,7 +353,8 @@ function buildStateResult(state) {
           ? Boolean(member.isSelf)
           : state.members.length === 1 && index === 0,
     })),
-    records: sortRecords((state.records || []).map((record) => normalizeRecord(record, state.baby.id))),
+    records: sortRecords((state.records || []).map((record) => normalizeRecord(record, baby.id))),
+    diaries: sortDiaries((state.diaries || []).map((diary) => normalizeDiary(diary, baby.id))),
     currentUserRole:
       (state.members || []).find((member) => member.isSelf)?.role ||
       ((state.members || [])[0] && state.members[0].role) ||
@@ -366,6 +422,30 @@ async function callCloud(action, data) {
   return payload.data;
 }
 
+function sortDiaries(diaries) {
+  return diaries.slice().sort((left, right) => {
+    if (left.date === right.date) {
+      return Number(right.updatedAt || 0) - Number(left.updatedAt || 0);
+    }
+
+    return String(left.date || "") > String(right.date || "") ? -1 : 1;
+  });
+}
+
+function normalizeDiary(diary, babyId) {
+  const timestamp = diary.updatedAt || diary.createdAt || now();
+  return {
+    ...diary,
+    id: diary.id || diary._id || "",
+    babyId: diary.babyId || babyId || "local-baby",
+    date: diary.date || "",
+    title: diary.title || "",
+    content: diary.content || "",
+    createdAt: diary.createdAt || timestamp,
+    updatedAt: timestamp,
+  };
+}
+
 async function bootstrap(options = {}) {
   if (isCloudEnabled()) {
     const { forceRefresh = false, preferCache = false, maxAge = DASHBOARD_CACHE_TTL } = options;
@@ -411,11 +491,37 @@ async function saveProfile(profile) {
       ...state.baby,
       name: profile.name || state.baby.name,
       birthDate: profile.birthDate || "",
+      avatarFileId:
+        profile.avatarFileId !== undefined
+          ? profile.avatarFileId || ""
+          : state.baby.avatarFileId || "",
       updatedAt: now(),
     },
   });
 
   return buildStateResult(nextState);
+}
+
+async function uploadAvatar(filePath, babyId) {
+  if (!isCloudEnabled()) {
+    throw new Error("当前为本地模式，开启云开发后才能上传头像。");
+  }
+
+  const extensionMatch = String(filePath || "").match(/\.([a-zA-Z0-9]+)(?:\?.*)?$/);
+  const extension = extensionMatch ? extensionMatch[1].toLowerCase() : "jpg";
+  const safeBabyId = String(babyId || "baby").replace(/[^a-zA-Z0-9_-]/g, "");
+  const cloudPath = `baby-avatars/${safeBabyId || "baby"}-${Date.now()}.${extension}`;
+  const result = await wx.cloud.uploadFile({
+    cloudPath,
+    filePath,
+  });
+
+  if (!result || !result.fileID) {
+    throw new Error("头像上传失败");
+  }
+
+  cacheBabyAvatar(babyId, result.fileID);
+  return result.fileID;
 }
 
 async function joinBaby(inviteCode) {
@@ -492,6 +598,78 @@ async function clearAllRecords() {
   return buildStateResult(nextState);
 }
 
+async function getDiaries() {
+  if (isCloudEnabled()) {
+    const diaries = await callCloud("getDiaries");
+    return sortDiaries((diaries || []).map((diary) => normalizeDiary(diary)));
+  }
+
+  return buildStateResult(readLocalState()).diaries;
+}
+
+async function saveDiary(diary) {
+  if (isCloudEnabled()) {
+    const diaries = await callCloud("saveDiary", diary);
+    return sortDiaries((diaries || []).map((item) => normalizeDiary(item)));
+  }
+
+  const state = readLocalState();
+  const timestamp = now();
+  const normalizedDiary = normalizeDiary(
+    {
+      ...diary,
+      babyId: state.baby.id,
+      updatedAt: timestamp,
+      createdAt: diary.createdAt || timestamp,
+    },
+    state.baby.id
+  );
+  const existingDiary = normalizedDiary.id
+    ? state.diaries.find((item) => item.id === normalizedDiary.id)
+    : null;
+  const nextDiaries = existingDiary
+    ? state.diaries.map((item) =>
+        item.id === normalizedDiary.id
+          ? {
+              ...normalizedDiary,
+              id: item.id,
+              createdAt: item.createdAt || normalizedDiary.createdAt,
+            }
+          : item
+      )
+    : [
+        {
+          ...normalizedDiary,
+          id: normalizedDiary.id || `local-diary-${Date.now()}`,
+        },
+        ...state.diaries,
+      ];
+
+  const nextState = writeLocalState({
+    ...state,
+    diaries: nextDiaries,
+  });
+
+  return buildStateResult(nextState).diaries;
+}
+
+async function deleteDiary(diaryId) {
+  if (isCloudEnabled()) {
+    const diaries = await callCloud("deleteDiary", {
+      diaryId,
+    });
+    return sortDiaries((diaries || []).map((diary) => normalizeDiary(diary)));
+  }
+
+  const state = readLocalState();
+  const nextState = writeLocalState({
+    ...state,
+    diaries: state.diaries.filter((diary) => diary.id !== diaryId),
+  });
+
+  return buildStateResult(nextState).diaries;
+}
+
 async function removeMember(memberId) {
   if (isCloudEnabled()) {
     return callCloud("removeMember", {
@@ -504,7 +682,8 @@ async function removeMember(memberId) {
 
 async function leaveBaby() {
   if (isCloudEnabled()) {
-    return callCloud("leaveBaby").then((state) => writeFreshDashboardState(state));
+    clearCachedDashboardState();
+    return callCloud("leaveBaby", undefined).then((state) => writeFreshDashboardState(state));
   }
 
   throw new Error("当前模式不支持退出协作，请先开启云开发。");
@@ -514,10 +693,14 @@ module.exports = {
   bootstrap,
   clearAllRecords,
   clearCachedDashboardState,
+  deleteDiary,
   deleteRecord,
+  getDiaries,
   leaveBaby,
   joinBaby,
   removeMember,
+  saveDiary,
   saveProfile,
   saveRecord,
+  uploadAvatar,
 };

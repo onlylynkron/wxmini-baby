@@ -3,6 +3,7 @@
   "projectname": "wxmini-baby",
   "setting": {
     "compileHotReLoad": true,
+    "minified": false,
     "urlCheck": true,
     "coverView": false,
     "lazyloadPlaceholderEnable": false,

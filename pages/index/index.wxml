@@ -1,11 +1,20 @@
 <view class="page {{editingId ? 'page-editing' : ''}}">
   <view class="hero-card">
-    <view class="hero-text">
-      <view class="hero-title-row">
-        <text class="hero-title">{{babyProfile.name || '我的宝宝'}}</text>
-        <text wx:if="{{todayVitaminWarningText}}" class="hero-vitamin-warning">{{todayVitaminWarningText}}</text>
+    <view class="hero-profile">
+      <view class="baby-avatar baby-avatar-hero {{babyProfile.avatarFileId ? 'baby-avatar-clickable' : ''}}" bindtap="handlePreviewAvatar">
+        <image wx:if="{{babyProfile.avatarFileId}}" class="baby-avatar-image" src="{{babyProfile.avatarFileId}}" mode="aspectFill" />
+        <text wx:else class="baby-avatar-fallback">{{avatarFallbackText}}</text>
       </view>
-      <text class="hero-desc">{{ageHeroText}}</text>
+      <view class="hero-text">
+        <view class="hero-title-row">
+          <text class="hero-title">{{babyProfile.name || '我的宝宝'}}</text>
+          <view wx:if="{{todayVitaminWarningText || todayIronWarningText}}" class="hero-warning-stack">
+            <text wx:if="{{todayVitaminWarningText}}" class="hero-warning-pill">{{todayVitaminWarningText}}</text>
+            <text wx:if="{{todayIronWarningText}}" class="hero-warning-pill">{{todayIronWarningText}}</text>
+          </view>
+        </view>
+        <text class="hero-desc">{{ageHeroText}}</text>
+      </view>
     </view>
 
     <view class="hero-stats">
@@ -98,7 +107,16 @@
             </view>
           </scroll-view>
         </view>
-        <view class="field-row">
+        <view wx:if="{{form.method === '辅食'}}" class="field">
+          <text class="field-label">吃了什么</text>
+          <input
+            class="input-field"
+            placeholder="例如 南瓜泥、米粉、胡萝卜"
+            value="{{form.solidFood}}"
+            bindinput="handleSolidFoodInput"
+          />
+        </view>
+        <view wx:else class="field-row">
           <view class="field">
             <text class="field-label">{{form.method === '母乳' ? '时间（分钟）' : '奶量（ml）'}}</text>
             <input
@@ -288,7 +306,7 @@
             />
           </block>
           <view wx:else class="readonly-field">
-            <text>{{form.medicinePreset === 'vitamin-ad' ? '维生素AD' : '维生素D'}}</text>
+            <text>{{form.medicinePreset === 'vitamin-ad' ? '维生素AD' : (form.medicinePreset === 'iron' ? '铁剂' : '维生素D')}}</text>
           </view>
         </view>
 

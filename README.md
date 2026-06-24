@@ -18,6 +18,7 @@
 ## 数据集合
 
 - `baby_profiles`
+- `baby_diaries`
 - `baby_members`
 - `baby_records`
 - `baby_users`

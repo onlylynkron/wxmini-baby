@@ -165,6 +165,14 @@ function isBreastfeedingMethod(method) {
   return String(method || "").trim() === "母乳";
 }
 
+function isSolidFoodMethod(method) {
+  return String(method || "").trim() === "辅食";
+}
+
+function shouldTrackFeedingAmount(method) {
+  return !isBreastfeedingMethod(method) && !isSolidFoodMethod(method);
+}
+
 function buildGrowthLatest(growthRecords) {
   const latestRecord = growthRecords[growthRecords.length - 1];
 
@@ -296,7 +304,7 @@ function getSummary(records, targetDate) {
     switch (record.type) {
       case "feeding":
         summary.feedingCount += 1;
-        if (!isBreastfeedingMethod(record.method)) {
+        if (shouldTrackFeedingAmount(record.method)) {
           summary.totalAmount += Number(record.amount || 0);
         }
         break;
@@ -387,14 +395,21 @@ function buildGrowthHistoryRecords(growthRecords) {
     });
 }
 
+function getAvatarFallbackText(name) {
+  const text = String(name || "").trim();
+  return text ? text.slice(0, 1) : "宝";
+}
+
 Page({
   data: {
     babyProfile: {
       id: "",
       name: "我的宝宝",
       birthDate: "",
+      avatarFileId: "",
       inviteCode: "",
     },
+    avatarFallbackText: "宝",
     ageShortText: "未设置",
     ageDetailText: "设置出生日期后会自动计算月龄和周岁。",
     ageHeroText: "设置出生日期后会自动计算总天数和月龄。",
@@ -441,6 +456,19 @@ Page({
     };
   },
 
+  handlePreviewAvatar() {
+    const avatarFileId = this.data.babyProfile.avatarFileId;
+
+    if (!avatarFileId) {
+      return;
+    }
+
+    wx.previewImage({
+      current: avatarFileId,
+      urls: [avatarFileId],
+    });
+  },
+
   applyGrowthState(state) {
     const babyProfile = state.baby || this.data.babyProfile;
     const allRecords = state.records || [];
@@ -451,6 +479,7 @@ Page({
     this.setData(
       {
         babyProfile,
+        avatarFallbackText: getAvatarFallbackText(babyProfile.name),
         ageShortText: ageInfo.shortText,
         ageDetailText: ageInfo.detailText,
         ageHeroText: ageInfo.heroText,

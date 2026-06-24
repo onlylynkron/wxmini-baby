@@ -2,6 +2,7 @@
   "pages": [
     "pages/index/index",
     "pages/growth/growth",
+    "pages/diary/diary",
     "pages/manage/manage"
   ],
   "window": {
@@ -30,6 +31,12 @@
         "selectedIconPath": "assets/tabbar/growth-active.png"
       },
       {
+        "pagePath": "pages/diary/diary",
+        "text": "日记",
+        "iconPath": "assets/tabbar/diary.png",
+        "selectedIconPath": "assets/tabbar/diary-active.png"
+      },
+      {
         "pagePath": "pages/manage/manage",
         "text": "管理",
         "iconPath": "assets/tabbar/manage.png",
@@ -38,5 +45,6 @@
     ]
   },
   "style": "v2",
+  "lazyCodeLoading": "requiredComponents",
   "sitemapLocation": "sitemap.json"
 }

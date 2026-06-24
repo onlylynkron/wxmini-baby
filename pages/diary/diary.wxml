@@ -1,0 +1,63 @@
+<view class="page diary-page">
+  <view class="hero-card diary-hero-card">
+    <view class="hero-text">
+      <text class="hero-title">日记</text>
+      <text class="hero-desc">{{diarySummary}}</text>
+    </view>
+    <button class="primary-btn diary-new-btn" size="mini" bindtap="handleCreateDiary">新增日记</button>
+  </view>
+
+  <view wx:if="{{editorVisible}}" class="panel diary-editor-panel">
+    <view class="section-head">
+      <text class="section-title">{{editorMode === 'edit' ? '编辑日记' : '新增日记'}}</text>
+      <text class="section-note">{{diaryForm.date}}</text>
+    </view>
+
+    <view class="field">
+      <text class="field-label">日期</text>
+      <picker mode="date" value="{{diaryForm.date}}" bindchange="handleDateChange">
+        <view class="picker-field">{{diaryForm.date}}</view>
+      </picker>
+    </view>
+
+    <view class="field">
+      <text class="field-label">内容</text>
+      <textarea
+        class="textarea-field diary-textarea"
+        placeholder="写下今天的变化、可爱的瞬间、吃睡状态，或任何想记住的小事。"
+        value="{{diaryForm.content}}"
+        maxlength="2000"
+        bindinput="handleContentInput"
+      ></textarea>
+    </view>
+
+    <view class="diary-editor-actions">
+      <button class="secondary-btn diary-editor-cancel" bindtap="handleCloseEditor">取消</button>
+      <button class="primary-btn diary-editor-save" loading="{{isSaving}}" bindtap="handleSaveDiary">保存日记</button>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="section-head">
+      <text class="section-title">日记列表</text>
+      <text class="section-note">{{diaryViews.length}} 篇</text>
+    </view>
+
+    <view wx:if="{{!diaryViews.length}}" class="empty-state">
+      <text class="empty-title">还没有日记</text>
+      <text class="empty-desc">点新增日记，留下一点每天的小尾巴。</text>
+    </view>
+
+    <view wx:for="{{diaryViews}}" wx:key="id" class="diary-card" data-id="{{item.id}}" bindtap="handleOpenDiary">
+      <view class="diary-card-main">
+        <text class="diary-card-date">{{item.displayDate}}</text>
+        <text class="diary-card-preview">{{item.previewText}}</text>
+        <text wx:if="{{item.updatedText}}" class="diary-card-meta">{{item.updatedText}}</text>
+      </view>
+      <view class="diary-card-actions" catchtap="handleDiaryActionsTap">
+        <button class="ghost-btn diary-card-btn" size="mini" data-id="{{item.id}}" catchtap="handleOpenDiary">编辑</button>
+        <button class="ghost-btn diary-card-btn diary-delete-btn" size="mini" data-id="{{item.id}}" catchtap="handleDeleteDiary">删除</button>
+      </view>
+    </view>
+  </view>
+</view>

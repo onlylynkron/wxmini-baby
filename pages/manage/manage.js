@@ -123,6 +123,7 @@ function createDefaultProfile() {
     id: "",
     name: "我的宝宝",
     birthDate: "",
+    avatarFileId: "",
     inviteCode: "",
   };
 }
@@ -271,6 +272,58 @@ function buildManageStats(ageInfo, members, currentUserRole, storageMeta) {
   ];
 }
 
+function getAvatarFallbackText(name) {
+  const text = String(name || "").trim();
+  return text ? text.slice(0, 1) : "宝";
+}
+
+function chooseAvatarImage() {
+  if (wx.chooseMedia) {
+    return new Promise((resolve, reject) => {
+      wx.chooseMedia({
+        count: 1,
+        mediaType: ["image"],
+        sourceType: ["album", "camera"],
+        sizeType: ["compressed"],
+        success: (result) => {
+          const file = result.tempFiles && result.tempFiles[0];
+          resolve(file && file.tempFilePath ? file.tempFilePath : "");
+        },
+        fail: reject,
+      });
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    wx.chooseImage({
+      count: 1,
+      sourceType: ["album", "camera"],
+      sizeType: ["compressed"],
+      success: (result) => {
+        resolve(result.tempFilePaths && result.tempFilePaths[0] ? result.tempFilePaths[0] : "");
+      },
+      fail: reject,
+    });
+  });
+}
+
+function cropAvatarImage(filePath) {
+  if (!wx.cropImage) {
+    return Promise.resolve(filePath);
+  }
+
+  return new Promise((resolve, reject) => {
+    wx.cropImage({
+      src: filePath,
+      cropScale: "1:1",
+      success: (result) => {
+        resolve(result.tempFilePath || filePath);
+      },
+      fail: reject,
+    });
+  });
+}
+
 function shouldDefaultCollapseProfile(babyProfile) {
   const name = String((babyProfile && babyProfile.name) || "").trim();
   return Boolean((babyProfile && babyProfile.birthDate) || (name && name !== "我的宝宝"));
@@ -290,7 +343,9 @@ Page({
     profileForm: {
       name: "我的宝宝",
       birthDate: "",
+      avatarFileId: "",
     },
+    avatarFallbackText: "宝",
     todayDate: formatDate(new Date()),
     profileCollapsed: false,
     collaborationCollapsed: false,
@@ -396,9 +451,11 @@ Page({
 
     this.setData({
       babyProfile,
+      avatarFallbackText: getAvatarFallbackText(babyProfile.name),
       profileForm: {
         name: babyProfile.name || "我的宝宝",
         birthDate: babyProfile.birthDate || "",
+        avatarFileId: babyProfile.avatarFileId || "",
       },
       profileCollapsed: isProfileCollapsed(babyProfile.id) || shouldDefaultCollapseProfile(babyProfile),
       collaborationCollapsed:
@@ -504,6 +561,73 @@ Page({
     });
   },
 
+  handlePreviewAvatar() {
+    const avatarFileId = this.data.babyProfile.avatarFileId || this.data.profileForm.avatarFileId;
+
+    if (!avatarFileId) {
+      return;
+    }
+
+    wx.previewImage({
+      current: avatarFileId,
+      urls: [avatarFileId],
+    });
+  },
+
+  async handleChooseAvatar() {
+    if (this.data.currentUserRole !== "owner") {
+      wx.showToast({
+        title: "只有管理员可以修改头像",
+        icon: "none",
+      });
+      return;
+    }
+
+    let filePath = "";
+    try {
+      filePath = await chooseAvatarImage();
+    } catch (error) {
+      return;
+    }
+
+    if (!filePath) {
+      return;
+    }
+
+    try {
+      filePath = await cropAvatarImage(filePath);
+    } catch (error) {
+      return;
+    }
+
+    wx.showLoading({
+      title: "上传头像中",
+      mask: true,
+    });
+
+    try {
+      const avatarFileId = await babyService.uploadAvatar(filePath, this.data.babyProfile.id);
+      const profileForm = this.data.profileForm;
+      const state = await babyService.saveProfile({
+        name: profileForm.name.trim() || "我的宝宝",
+        birthDate: profileForm.birthDate,
+        avatarFileId,
+      });
+      this.applyState(state);
+      wx.showToast({
+        title: "头像已更新",
+        icon: "success",
+      });
+    } catch (error) {
+      wx.showToast({
+        title: error.message || "头像上传失败",
+        icon: "none",
+      });
+    } finally {
+      wx.hideLoading();
+    }
+  },
+
   handleExpandProfile() {
     this.setProfileCollapsed(false);
   },
@@ -556,6 +680,7 @@ Page({
       const state = await babyService.saveProfile({
         name: profileForm.name.trim() || "我的宝宝",
         birthDate: profileForm.birthDate,
+        avatarFileId: profileForm.avatarFileId,
       });
       this.applyState(state);
       this.setProfileCollapsed(true, state.baby && state.baby.id);
